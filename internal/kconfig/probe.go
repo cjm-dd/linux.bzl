@@ -330,7 +330,8 @@ func isKnownStackProtectorProbe(command string) bool {
 		"gcc-x86_32-has-stack-protector.sh",
 		"gcc-x86_64-has-stack-protector.sh",
 	} {
-		if isKnownLinuxProbeScript(command, script, "clang", "-fintegrated-as") {
+		if isKnownLinuxProbeScript(command, script, "clang") ||
+			isKnownLinuxProbeScript(command, script, "clang", "-fintegrated-as") {
 			return true
 		}
 	}

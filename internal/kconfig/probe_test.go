@@ -64,6 +64,19 @@ func TestLegacyAsmGotoProbe(t *testing.T) {
 	}
 }
 
+func TestLegacyStackProtectorProbe(t *testing.T) {
+	shell := testLinuxProbeShell(t, "x86_64")
+	for _, script := range []string{"gcc-x86_32-has-stack-protector.sh", "gcc-x86_64-has-stack-protector.sh"} {
+		for _, flags := range []string{"", " -fintegrated-as"} {
+			command := `{ /src/scripts/` + script + ` /pinned/bin/clang` + flags + `; } >/dev/null 2>&1 && echo "y" || echo "n"`
+			got, err := shell(context.Background(), command)
+			if err != nil || got != "y" {
+				t.Fatalf("probe %q = %q, %v; want y", command, got, err)
+			}
+		}
+	}
+}
+
 func TestLinuxLLVMProbeShellSupportsKconfigIncludeProbes(t *testing.T) {
 	rootDir := t.TempDir()
 	scriptsDir := filepath.Join(rootDir, "scripts")
