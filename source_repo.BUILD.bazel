@@ -229,6 +229,12 @@ cc_library(
 )
 
 cc_library(
+    name = "tools_include_headers_cc",
+    hdrs = glob(["tools/include/**/*.h"]),
+    strip_include_prefix = "tools/include",
+)
+
+cc_library(
     name = "tools_headers_cc",
     hdrs = glob([
         "arch/x86/tools/**/*.h",
@@ -253,6 +259,7 @@ cc_library(
         "tools/objtool/arch/x86/include",
         "tools/objtool/include",
     ],
+    deps = [":tools_include_headers_cc"],
 )
 
 filegroup(
