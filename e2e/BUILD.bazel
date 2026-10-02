@@ -13,6 +13,7 @@ exports_files([
     "kvm_arm64.config",
     "armv7.config",
     "modversions.config",
+    "module_verification.config",
     "rust.config",
     "rust_arm64.config",
     "srcversions.config",
@@ -49,6 +50,37 @@ linux_cc_module(
     name = "hello_c_module",
     srcs = ["hello_module.c"],
     kernel = "@e2e_x86_64//:kernel",
+)
+
+linux_cc_module(
+    name = "hello_c_module_verification",
+    srcs = ["hello_module.c"],
+    kernel = "@e2e_x86_64//variants/module_verification:kernel",
+)
+
+initramfs(
+    name = "initramfs_module_verification",
+    character_devices = {
+        "/dev/console": "5:1",
+        "/dev/null": "1:3",
+    },
+    executables = {"/init": "//boot:init_x86_64"},
+    files = {"/test_module.ko": ":hello_c_module_verification"},
+)
+
+qemu_boot_test(
+    name = "unsigned_module_verification_test",
+    size = "large",
+    timeout = "long",
+    arch = "x86_64",
+    expect = "LINUX_BZL_MODULE_LOAD_OK",
+    initramfs = ":initramfs_module_verification",
+    kernel = "@e2e_x86_64//variants/module_verification:kernel",
+    kernel_args = [
+        "console=ttyS0,115200",
+        "rdinit=/init",
+        "panic=-1",
+    ],
 )
 
 build_test(

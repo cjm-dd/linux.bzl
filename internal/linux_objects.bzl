@@ -5994,7 +5994,6 @@ def _linux_object_impl(ctx):
     if ctx.attr.object == "certs/system_certificates.o":
         for symbol in [
             "CONFIG_IMA_APPRAISE_MODSIG",
-            "CONFIG_MODULE_SIG",
             "CONFIG_MODULE_SIG_ALL",
         ]:
             if config_values.get(symbol) in ["y", "m"]:

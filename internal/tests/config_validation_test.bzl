@@ -36,6 +36,13 @@ def _config_validation_supported_test_impl(ctx):
         {"CONFIG_MODVERSIONS": "y"},
         {"CONFIG_MODULE_SRCVERSION_ALL": "y"},
         {
+            "CONFIG_MODULE_SIG": "y",
+            "CONFIG_MODULE_SIG_ALL": "n",
+            "CONFIG_MODULE_SIG_KEY": "\"certs/signing_key.pem\"",
+            "CONFIG_SYSTEM_TRUSTED_KEYS": "\"\"",
+        },
+        {"CONFIG_MODULE_SIG": "y", "CONFIG_MODULE_SIG_FORCE": "y"},
+        {
             "CONFIG_BASIC_MODVERSIONS": "y",
             "CONFIG_MODVERSIONS": "y",
         },
@@ -73,7 +80,7 @@ def config_validation_test_suite(name):
             "certificate or signing",
         ),
         "module_signing": (
-            {"CONFIG_MODULE_SIG": "y"},
+            {"CONFIG_MODULE_SIG": "y", "CONFIG_MODULE_SIG_ALL": "y"},
             "certificate or signing",
         ),
         "native_cpu": (

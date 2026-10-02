@@ -558,6 +558,14 @@ _object_remove_flags_test = analysistest.make(_object_remove_flags_test_impl)
 
 def _empty_system_certificates_test_impl(ctx):
     env = analysistest.begin(ctx)
+    certificate_writes = [
+        action
+        for action in analysistest.target_actions(env)
+        if any([file.basename in ["signing_key.x509", "x509_certificate_list"] for file in action.outputs.to_list()])
+    ]
+    asserts.equals(env, 2, len(certificate_writes))
+    for action in certificate_writes:
+        asserts.equals(env, "", action.content)
     actions = [
         action
         for action in analysistest.target_actions(env)
@@ -1281,6 +1289,35 @@ def linux_objects_fail_closed_test_suite(name):
             ":" + generated_headers,
             ":" + duplicate_generated_headers,
         ],
+        tags = fixture_tags,
+    )
+    verification_certificate_object = name + "_verification_certificate_object"
+    linux_compile_environment_index(
+        name = name + "_verification_compile_environment_index",
+        compile_environments = {
+            environment_id: json.encode({
+                "abi": "x86_64-linux-gnu",
+                "config_payload": payload_id,
+                "generated_header_families": [header_family_id],
+            }),
+        },
+        config_payloads = {
+            payload_id: "CONFIG_MODULE_SIG=y\nCONFIG_SYSTEM_TRUSTED_KEYS=\"\"\n",
+        },
+        expected_abi = "x86_64-linux-gnu",
+        generated_headers = [":" + generated_headers],
+        tags = fixture_tags,
+    )
+    linux_object(
+        name = verification_certificate_object,
+        compile_environment_id = environment_id,
+        compile_environment_index = ":" + name + "_verification_compile_environment_index",
+        content_id = object_a_id,
+        mode = "y",
+        object = "certs/system_certificates.o",
+        source_input_file = 1,
+        source_input_group = 1,
+        source_input_index = ":" + name + "_certificate_source_input_index",
         tags = fixture_tags,
     )
     arm64_generated_headers = name + "_arm64_generated_headers"
@@ -2067,6 +2104,7 @@ def linux_objects_fail_closed_test_suite(name):
     ]
     tests = [
         ":" + certificate_object + "_test",
+        ":" + verification_certificate_object + "_test",
         ":" + indexed_assembly_object_test,
         ":" + indexed_object_test,
         ":" + precise_family_object_test,
@@ -2075,6 +2113,10 @@ def linux_objects_fail_closed_test_suite(name):
     _empty_system_certificates_test(
         name = certificate_object + "_test",
         target_under_test = ":" + certificate_object,
+    )
+    _empty_system_certificates_test(
+        name = verification_certificate_object + "_test",
+        target_under_test = ":" + verification_certificate_object,
     )
 
     base_header_family_ids = {

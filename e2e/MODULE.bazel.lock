@@ -276,8 +276,8 @@
   "moduleExtensions": {
     "@@linux.bzl+//:extensions.bzl%linux_images": {
       "os:linux,arch:amd64": {
-        "bzlTransitiveDigest": "3HJYFQ0aJ5LncMQ1QREpSWsJ82oUPd4xPLPrX7Z2R7U=",
-        "usagesDigest": "PNYPYYFiAdabxppdbWFRjIOmnKePh6aHBYkSG5zWiK0=",
+        "bzlTransitiveDigest": "ex4AS4w6CWP2Hzo9wtypRZqw3k4y/0G52yfncp1M4PU=",
+        "usagesDigest": "SX3hdLGRdxy9cjJbvWmNul3Nv8LpgXTsUaFJsCmPVcs=",
         "recordedInputs": [
           "REPO_MAPPING:,e2e_linux_6_12_96 +linux_source_repository+e2e_linux_6_12_96",
           "REPO_MAPPING:,e2e_linux_6_18_39 +linux_source_repository+e2e_linux_6_18_39",
@@ -994,7 +994,8 @@
               "config_mode": "default",
               "overlays": {
                 "modversions": "@@//:modversions.config",
-                "srcversions": "@@//:srcversions.config"
+                "srcversions": "@@//:srcversions.config",
+                "module_verification": "@@//:module_verification.config"
               },
               "platform": "@@//:linux_x86_64",
               "probe_cc": "@@llvm++llvm_toolchain_minimal+llvm-toolchain-minimal-22.1.8-linux-amd64//:bin/clang",
@@ -1012,7 +1013,8 @@
               "config_mode": "default",
               "overlays": {
                 "modversions": "@@//:modversions.config",
-                "srcversions": "@@//:srcversions.config"
+                "srcversions": "@@//:srcversions.config",
+                "module_verification": "@@//:module_verification.config"
               },
               "platform": "@@//:linux_x86_64",
               "probe_cc": "@@llvm++llvm_toolchain_minimal+llvm-toolchain-minimal-22.1.8-linux-amd64//:bin/clang",
@@ -1030,7 +1032,8 @@
               "config_mode": "default",
               "overlays": {
                 "modversions": "@@//:modversions.config",
-                "srcversions": "@@//:srcversions.config"
+                "srcversions": "@@//:srcversions.config",
+                "module_verification": "@@//:module_verification.config"
               },
               "platform": "@@//:linux_x86_64",
               "probe_cc": "@@llvm++llvm_toolchain_minimal+llvm-toolchain-minimal-22.1.8-linux-amd64//:bin/clang",
@@ -1051,6 +1054,7 @@
               },
               "platform": "@@//:linux_x86_64",
               "variants": [
+                "module_verification",
                 "modversions",
                 "srcversions"
               ]

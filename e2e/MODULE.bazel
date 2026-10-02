@@ -170,6 +170,11 @@ linux_images.overlay(
     config = "//:srcversions.config",
     image = "e2e_x86_64",
 )
+linux_images.overlay(
+    name = "module_verification",
+    config = "//:module_verification.config",
+    image = "e2e_x86_64",
+)
 use_repo(
     linux_images,
     "e2e_6_12_96_aarch64",

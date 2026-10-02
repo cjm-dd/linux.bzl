@@ -298,6 +298,13 @@ out-of-tree C module modpost actions. Linux 6.18's basic format is supported;
 extended/DWARF formats and Rust modules with symbol versioning remain explicit
 errors.
 
+Kernels may enable `CONFIG_MODULE_SIG=y` for signature verification while
+modules built by linux.bzl remain unsigned. The built-in certificate list is
+empty; no signing keys are read or generated. Keep `CONFIG_MODULE_SIG_ALL`
+disabled: automatic signing is not implemented. Loading unsigned modules also
+requires signature enforcement to be disabled (`CONFIG_MODULE_SIG_FORCE=n`,
+no `module.sig_enforce=1`, and no security policy requiring signatures).
+
 ### Vendor Kbuild modules
 
 Vendor modules that expect to live in the kernel tree are overlaid into the

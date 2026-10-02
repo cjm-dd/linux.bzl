@@ -25,7 +25,6 @@ def validate_config_features(config, description):
             fail("%s enables %s, whose module metadata instrumentation is not modeled" % (description, symbol))
 
     for symbol in [
-        "CONFIG_MODULE_SIG",
         "CONFIG_MODULE_SIG_ALL",
         "CONFIG_IMA_APPRAISE_MODSIG",
         "CONFIG_SYSTEM_REVOCATION_LIST",

@@ -85,6 +85,11 @@ bazel test //:kvm_verity_kernel_build_test
 The C module target uses the existing module-enabled `@e2e_x86_64//:kernel`
 directly; it does not introduce a separate kernel configuration.
 
+`bazel test //:unsigned_module_verification_test` boots a kernel with
+`CONFIG_MODULE_SIG=y` and symbol versioning, then loads an unsigned external
+C module. The kernel uses an empty built-in certificate list and does not
+enforce signatures; no signing keys are needed.
+
 The KVM fixture enables the generic, Intel, and AMD KVM implementations. The
 verity fixture enables the device-mapper verity target and signed root-hash
 verification with an empty built-in trusted keyring. Supplying embedded
