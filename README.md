@@ -218,7 +218,9 @@ the Rust-analyzer toolchain that exposes the matching `rustc_srcs`; omitting
 release and embedded LLVM version during actions, writes those exact values
 into the resolved kernel config, and applies source-derived version predicates.
 There is no separate checked-in Rust source archive or analysis-time compiler
-guess.
+guess. Kernels without a `rustc` entry in `scripts/min-tool-version.sh` skip
+Rust-specific generator arguments and reject `CONFIG_RUST=y`; C-only builds
+do not require that entry.
 
 Load the rule from the public entry point:
 

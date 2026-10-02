@@ -6,6 +6,22 @@ load("//internal:linux_image_repository.bzl", "repositories_test_helpers")
 
 visibility("private")
 
+def _optional_rust_support_test_impl(ctx):
+    env = unittest.begin(ctx)
+    legacy = "gcc)\n\techo 5.1.0\n\t;;\nllvm)\n\techo 10.0.1\n\t;;\n"
+    modern = legacy + "rustc)\n\techo 1.78.0\n\t;;\n"
+    asserts.equals(env, "", repositories_test_helpers.minimum_tool_version(legacy, "rustc"))
+    asserts.equals(env, "1.78.0", repositories_test_helpers.minimum_tool_version(modern, "rustc"))
+    asserts.equals(env, [], repositories_test_helpers.rust_probe_args(""))
+    asserts.equals(env, ["-linux_probe_rustc_version", "107800"], repositories_test_helpers.rust_probe_args("1.78.0"))
+    asserts.equals(env, None, repositories_test_helpers.rust_config_error({}, ""))
+    asserts.equals(env, None, repositories_test_helpers.rust_config_error({"CONFIG_RUST": "n"}, ""))
+    asserts.equals(env, None, repositories_test_helpers.rust_config_error({"CONFIG_RUST": "y"}, "1.78.0"))
+    asserts.true(env, "CONFIG_RUST requires" in repositories_test_helpers.rust_config_error({"CONFIG_RUST": "y"}, ""))
+    return unittest.end(env)
+
+optional_rust_support_test = unittest.make(_optional_rust_support_test_impl)
+
 def _kconfig_tool_filename_test_impl(ctx):
     env = unittest.begin(ctx)
     asserts.equals(env, "kconfig.exe", kconfig_tool_filename("windows_amd64", "kconfig"))

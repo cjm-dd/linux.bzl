@@ -266,7 +266,19 @@ def _minimum_tool_version(content, tool):
             version = version[1:-1]
         _linux_version_code(version)
         return version
+    if not in_tool:
+        return ""
     fail("scripts/min-tool-version.sh does not declare a literal %s minimum" % tool)
+
+def _rust_config_error(config, minimum_rustc_version):
+    if not minimum_rustc_version and config.get("CONFIG_RUST") == "y":
+        return "CONFIG_RUST requires a kernel declaring a rustc minimum in scripts/min-tool-version.sh"
+    return None
+
+def _rust_probe_args(minimum_rustc_version):
+    if not minimum_rustc_version:
+        return []
+    return ["-linux_probe_rustc_version", str(_linux_version_code(minimum_rustc_version))]
 
 def _is_rust_toolchain_config(key):
     return key in [
@@ -623,6 +635,9 @@ def _parse_config(content, description):
     return values
 
 def _resolve_config(rctx, tool, source_root, arch, version, name, raw, config_mode, minimum_rustc_version, module_make_vars = {}):
+    rust_error = _rust_config_error(raw, minimum_rustc_version)
+    if rust_error:
+        fail("%s: %s" % (name, rust_error))
     descriptor = _ARCHITECTURES[arch]
     directory = ".linux_bzl_resolve/" + name
     input_path = directory + "/input.config"
@@ -1250,10 +1265,11 @@ def _add_generator_variables(args, rctx, profile, descriptor, source_root, minim
     variables = dict(descriptor.compact_vars)
     variables.update({
         "ARCH": descriptor.arch,
-        "RUSTC_VERSION_TEXT": "rustc " + minimum_rustc_version,
         "SRCARCH": descriptor.srcarch,
         "UTS_MACHINE": descriptor.uts_machine,
     })
+    if minimum_rustc_version:
+        variables["RUSTC_VERSION_TEXT"] = "rustc " + minimum_rustc_version
     for name, value in module_make_vars.items():
         if name in variables or name == "srctree":
             fail("module_make_vars cannot override reserved generator variable %r" % name)
@@ -1267,8 +1283,6 @@ def _add_generator_variables(args, rctx, profile, descriptor, source_root, minim
     args.extend([
         "-linux_probe_arch",
         descriptor.arch,
-        "-linux_probe_rustc_version",
-        str(_linux_version_code(minimum_rustc_version)),
         "-target_profile",
         profile,
         "-linux_arch",
@@ -1280,6 +1294,7 @@ def _add_generator_variables(args, rctx, profile, descriptor, source_root, minim
         "-probe_ld",
         str(rctx.path(rctx.attr.probe_ld)),
     ])
+    args.extend(_rust_probe_args(minimum_rustc_version))
 
 def _metadata_positive_decimal(value, context):
     if not value or (len(value) > 1 and value.startswith("0")):
@@ -2060,6 +2075,9 @@ linux_image_targets(
     )
 
 repositories_test_helpers = struct(
+    minimum_tool_version = _minimum_tool_version,
+    rust_config_error = _rust_config_error,
+    rust_probe_args = _rust_probe_args,
     action_group_validation = _action_group_validation,
     validate_compile_environment_abi = _validate_compile_environment_abi,
     content_graph_metadata_structure_error = _content_graph_metadata_structure_error,
