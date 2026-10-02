@@ -49,6 +49,21 @@ func TestLinuxLLVMProbePolicy(t *testing.T) {
 	}
 }
 
+func TestLegacyAsmGotoProbe(t *testing.T) {
+	for _, arch := range []string{"x86_64", "aarch64", "armv7"} {
+		shell := testLinuxProbeShell(t, arch)
+		command := `{ /src/scripts/gcc-goto.sh /pinned/bin/clang; } >/dev/null 2>&1 && echo "y" || echo "n"`
+		got, err := shell(context.Background(), command)
+		if err != nil || got != "y" {
+			t.Fatalf("%s asm goto probe = %q, %v; want y", arch, got, err)
+		}
+		command = `{ /src/scripts/gcc-goto.sh clang -fplugin=untrusted.so; } >/dev/null 2>&1 && echo "y" || echo "n"`
+		if _, err := shell(context.Background(), command); err == nil {
+			t.Fatalf("%s accepted unexpected script arguments", arch)
+		}
+	}
+}
+
 func TestLinuxLLVMProbeShellSupportsKconfigIncludeProbes(t *testing.T) {
 	rootDir := t.TempDir()
 	scriptsDir := filepath.Join(rootDir, "scripts")

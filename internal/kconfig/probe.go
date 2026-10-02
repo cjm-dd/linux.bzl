@@ -148,6 +148,9 @@ func (s *linuxProbeShell) commandSucceeds(ctx context.Context, command string) (
 		return true, nil
 	case isKnownCCCanLinkProbe(command):
 		return false, nil
+	case isKnownLinuxProbeScript(command, "gcc-goto.sh", "clang"):
+		// Linux 5.15 tests basic asm goto here, supported by the pinned Clang.
+		return true, nil
 	case isKnownStackProtectorProbe(command):
 		return true, nil
 	case isKnownRELRProbe(command):
