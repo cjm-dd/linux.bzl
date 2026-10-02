@@ -212,6 +212,14 @@ cc_library(
     includes = ["scripts/include"],
 )
 
+filegroup(
+    name = "x86_objtool_orc_sources",
+    srcs = glob([
+        "tools/objtool/arch/x86/orc.c",
+        "tools/objtool/builtin-orc.c",
+    ], allow_empty = True),
+)
+
 cc_library(
     name = "genksyms_headers_cc",
     hdrs = ["scripts/genksyms/genksyms.h"],

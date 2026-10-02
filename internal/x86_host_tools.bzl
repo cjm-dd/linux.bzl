@@ -27,7 +27,6 @@ _X86_OBJTOOL_SRCS = [
     "tools/lib/subcmd/sigchain.c",
     "tools/lib/subcmd/subcmd-config.c",
     "tools/objtool/arch/x86/decode.c",
-    "tools/objtool/arch/x86/orc.c",
     "tools/objtool/arch/x86/special.c",
     "tools/objtool/builtin-check.c",
     "tools/objtool/check.c",
@@ -153,7 +152,7 @@ def linux_x86_host_tools(
 
     cc_binary(
         name = objtool,
-        srcs = source_labels(source_repo, _X86_OBJTOOL_SRCS),
+        srcs = source_labels(source_repo, _X86_OBJTOOL_SRCS) + [source_label(source_repo, "x86_objtool_orc_sources")],
         copts = [
             "-D_GNU_SOURCE",
             "-Dbswap_16=__bswap_16",
