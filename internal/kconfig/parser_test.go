@@ -55,6 +55,34 @@ endmenu
 	}
 }
 
+func TestParseHelpUsesTextIndentation(t *testing.T) {
+	tree := mustParseString(t, `
+config FIRMWARE
+	bool "Firmware"
+	help
+	This option enables firmware built from
+	source without treating source as a statement.
+	if SOMETHING appears here it is still prose.
+
+config NEXT
+	bool "Next"
+	help
+	  More indented help.
+	default y
+`)
+	if got := tree.Symbols["FIRMWARE"].Menus[0].Help; !strings.Contains(got, "source without") || !strings.Contains(got, "if SOMETHING") {
+		t.Fatalf("help text was truncated: %q", got)
+	}
+	if got := tree.Symbols["NEXT"].Menus[0].Help; strings.TrimSpace(got) != "More indented help." {
+		t.Fatalf("help consumed the following option: %q", got)
+	}
+	resolved, err := tree.ResolveConfig("test", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantConfigValues(t, resolved, map[string]string{"CONFIG_NEXT": "y"})
+}
+
 func TestParseChoice(t *testing.T) {
 	tree, err := Parse(context.Background(), strings.NewReader(`
 choice

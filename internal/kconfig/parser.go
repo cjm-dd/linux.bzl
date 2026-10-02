@@ -388,7 +388,7 @@ func (p *parser) parseEntryOptions(lines []sourceLine, idx int, entry *Menu, cla
 			return idx, nil
 		}
 		if toks[0].value == "help" {
-			help, next := collectHelp(lines, idx+1, visualIndent(lines[idx].text))
+			help, next := collectHelp(lines, idx+1)
 			if strings.TrimSpace(help) == "" {
 				return idx, p.parseError(lines[idx].pos, "blank help text")
 			}
@@ -631,7 +631,7 @@ func splitIf(toks []token) (before []token, ifTokens []token) {
 	return toks, nil
 }
 
-func collectHelp(lines []sourceLine, idx int, helpIndent int) (string, int) {
+func collectHelp(lines []sourceLine, idx int) (string, int) {
 	firstIndent := -1
 	var out []string
 	for idx < len(lines) {
@@ -642,7 +642,7 @@ func collectHelp(lines []sourceLine, idx int, helpIndent int) (string, int) {
 			continue
 		}
 		indent := visualIndent(raw)
-		if indent <= helpIndent && isBlockKeyword(strings.TrimSpace(raw)) {
+		if indent == 0 || (firstIndent != -1 && indent < firstIndent) {
 			break
 		}
 		if firstIndent == -1 {
@@ -652,34 +652,6 @@ func collectHelp(lines []sourceLine, idx int, helpIndent int) (string, int) {
 		idx++
 	}
 	return strings.Join(out, "\n"), idx
-}
-
-func isBlockKeyword(line string) bool {
-	fields := strings.Fields(line)
-	if len(fields) == 0 {
-		return false
-	}
-	switch fields[0] {
-	case "config", "menuconfig", "choice", "source", "rsource", "osource", "orsource", "endchoice", "endmenu", "endif":
-		return true
-	case "if":
-		return len(fields) > 1 && looksLikeKconfigExprStart(fields[1])
-	case "menu", "comment":
-		return len(fields) > 1 && strings.HasPrefix(fields[1], `"`)
-	default:
-		return false
-	}
-}
-
-func looksLikeKconfigExprStart(value string) bool {
-	if value == "" {
-		return false
-	}
-	switch value[0] {
-	case '!', '(':
-		return true
-	}
-	return (value[0] >= 'A' && value[0] <= 'Z') || (value[0] >= '0' && value[0] <= '9')
 }
 
 func visualIndent(s string) int {
