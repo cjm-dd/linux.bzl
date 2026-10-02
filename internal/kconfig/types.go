@@ -93,6 +93,7 @@ type Symbol struct {
 	Properties    []*Property
 	Choice        *Symbol
 	ChoiceMembers []*Symbol
+	Optional      bool
 	DirDep        Expr
 	RevDep        Expr
 	Implied       Expr
@@ -151,7 +152,7 @@ func (t *Tree) symbol(name string, constant bool) *Symbol {
 
 func (t *Tree) anonymousSymbol(pos Position) *Symbol {
 	t.anonID++
-	return &Symbol{Name: fmt.Sprintf("<choice@%s:%d:%d>", pos.Filename, pos.Line, t.anonID), Type: SymbolBool}
+	return &Symbol{Name: fmt.Sprintf("<choice@%s:%d:%d>", pos.Filename, pos.Line, t.anonID), Type: SymbolUnknown}
 }
 
 func (m *Menu) addChild(child *Menu) {

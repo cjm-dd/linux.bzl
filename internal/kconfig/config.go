@@ -359,7 +359,18 @@ func (r *configResolver) visibleUserValue(sym *Symbol) bool {
 func (r *configResolver) applyChoiceSemantics(choices []*Symbol) bool {
 	changed := false
 	for _, choice := range choices {
-		selected := r.choiceSelection(choice)
+		mode := triY
+		if choice.Type == SymbolTristate {
+			mode = r.tristateChoiceMode(choice)
+		}
+		if r.effective[choice] != mode {
+			r.effective[choice] = mode
+			changed = true
+		}
+		var selected *Symbol
+		if mode == triY {
+			selected = r.choiceSelection(choice)
+		}
 		for _, member := range choice.ChoiceMembers {
 			if member.Type != SymbolBool && member.Type != SymbolTristate {
 				continue
@@ -367,6 +378,8 @@ func (r *configResolver) applyChoiceSemantics(choices []*Symbol) bool {
 			next := triN
 			if member == selected {
 				next = triY
+			} else if mode == triM && member.Type == SymbolTristate {
+				next = minResolvedTri(r.rawTri[member], minResolvedTri(r.promptVisibility(member), triM))
 			}
 			write := next != triN
 			if r.effective[member] != next || r.written[member] != write {
@@ -378,6 +391,21 @@ func (r *configResolver) applyChoiceSemantics(choices []*Symbol) bool {
 		}
 	}
 	return changed
+}
+
+// Legacy tristate choices select one built-in member or
+// any number of modules. A non-optional choice has a minimum mode of m,
+// not a default built-in selection (scripts/kconfig/menu.c and symbol.c).
+func (r *configResolver) tristateChoiceMode(choice *Symbol) triValue {
+	visible := r.promptVisibility(choice)
+	mode := triN
+	if !choice.Optional {
+		mode = minResolvedTri(visible, triM)
+	}
+	for _, member := range choice.ChoiceMembers {
+		mode = maxResolvedTri(mode, minResolvedTri(r.rawTri[member], visible))
+	}
+	return r.clampSymbolTri(choice, mode)
 }
 
 func (r *configResolver) choiceSelection(choice *Symbol) *Symbol {
@@ -419,6 +447,13 @@ func (r *configResolver) choiceSelection(choice *Symbol) *Symbol {
 func (r *configResolver) choiceMemberVisible(member *Symbol) bool {
 	if member == nil {
 		return false
+	}
+	if member.Choice != nil && member.Choice.Type == SymbolTristate {
+		visible := r.promptVisibility(member)
+		if !r.modulesEnabled() && visible == triM {
+			visible = triY
+		}
+		return visible == triY
 	}
 	return r.evalDepExprDefault(member.DirDep, triY) != triN
 }

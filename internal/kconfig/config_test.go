@@ -818,6 +818,82 @@ endmenu
 	})
 }
 
+func TestResolveConfigTristateChoice(t *testing.T) {
+	// Expected values were checked against Linux 5.15's conf --olddefconfig.
+	fixture := `
+config MODULES
+	bool "Modules"
+	modules
+	default y
+config GATE
+	tristate "Gate"
+	default y
+choice
+	prompt "Backend"
+	depends on GATE
+	default SECOND
+config FIRST
+	tristate "First"
+config SECOND
+	tristate "Second"
+config BUILTIN
+	bool "Built-in only"
+endchoice
+`
+	for _, tc := range []struct {
+		name string
+		raw  map[string]string
+		want [3]string
+	}{
+		{"no built-in default in module mode", nil, [3]string{"n", "n", "n"}},
+		{"multiple modules", map[string]string{"CONFIG_FIRST": "m", "CONFIG_SECOND": "m"}, [3]string{"m", "m", "n"}},
+		{"built-in excludes modules", map[string]string{"CONFIG_FIRST": "m", "CONFIG_SECOND": "y"}, [3]string{"n", "y", "n"}},
+		{"explicitly disabled", map[string]string{"CONFIG_FIRST": "n", "CONFIG_SECOND": "n", "CONFIG_BUILTIN": "n"}, [3]string{"n", "n", "n"}},
+		{"module dependency", map[string]string{"CONFIG_GATE": "m", "CONFIG_FIRST": "y", "CONFIG_SECOND": "m", "CONFIG_BUILTIN": "y"}, [3]string{"m", "m", "n"}},
+		{"disabled dependency", map[string]string{"CONFIG_GATE": "n", "CONFIG_FIRST": "y"}, [3]string{"n", "n", "n"}},
+		{"modules disabled", map[string]string{"CONFIG_MODULES": "n"}, [3]string{"n", "y", "n"}},
+		{"bool member", map[string]string{"CONFIG_BUILTIN": "y"}, [3]string{"n", "n", "y"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resolved := mustResolveConfig(t, fixture, tc.raw)
+			wantConfigValues(t, resolved, map[string]string{
+				"CONFIG_FIRST": tc.want[0], "CONFIG_SECOND": tc.want[1], "CONFIG_BUILTIN": tc.want[2],
+			})
+		})
+	}
+}
+
+func TestResolveConfigOptionalTristateChoice(t *testing.T) {
+	fixture := `
+config MODULES
+	bool "Modules"
+	modules
+choice
+	tristate "Backend"
+	optional
+config FIRST
+	tristate "First"
+config SECOND
+	tristate "Second"
+endchoice
+`
+	for _, tc := range []struct {
+		name string
+		raw  map[string]string
+		want [2]string
+	}{
+		{"disabled without modules", nil, [2]string{"n", "n"}},
+		{"disabled with modules", map[string]string{"CONFIG_MODULES": "y"}, [2]string{"n", "n"}},
+		{"multiple modules", map[string]string{"CONFIG_MODULES": "y", "CONFIG_FIRST": "m", "CONFIG_SECOND": "m"}, [2]string{"m", "m"}},
+		{"built-in", map[string]string{"CONFIG_SECOND": "y"}, [2]string{"n", "y"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resolved := mustResolveConfig(t, fixture, tc.raw)
+			wantConfigValues(t, resolved, map[string]string{"CONFIG_FIRST": tc.want[0], "CONFIG_SECOND": tc.want[1]})
+		})
+	}
+}
+
 func TestResolveConfigChoiceDefaultsAndSingleSelection(t *testing.T) {
 	fixture := `
 mainmenu "Test"

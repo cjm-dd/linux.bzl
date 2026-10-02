@@ -250,8 +250,11 @@ func (p *parser) parseConfig(lines []sourceLine, idx int, parent *Menu, menuType
 		if entry.Prompt == nil {
 			return idx, p.parseError(entry.Position, "choice member %q must have a prompt", sym.Name)
 		}
-		if sym.Type != SymbolBool {
-			return idx, p.parseError(entry.Position, "choice member %q must be bool", sym.Name)
+		if sym.Type != SymbolBool && sym.Type != SymbolTristate {
+			return idx, p.parseError(entry.Position, "choice member %q must be bool or tristate", sym.Name)
+		}
+		if p.currentChoice.Symbol.Type == SymbolUnknown {
+			p.currentChoice.Symbol.Type = sym.Type
 		}
 		sym.Choice = p.currentChoice.Symbol
 		p.currentChoice.Symbol.ChoiceMembers = append(p.currentChoice.Symbol.ChoiceMembers, sym)
@@ -464,6 +467,7 @@ func (p *parser) applyOption(entry *Menu, toks []token, class optionClass) error
 		if len(toks) != 1 {
 			return p.parseError(toks[0].pos, "optional does not accept arguments")
 		}
+		entry.Symbol.Optional = true
 	case "default", "def_bool", "def_tristate":
 		if len(toks) < 2 {
 			return p.parseError(toks[0].pos, "%s expects a value", kw)
