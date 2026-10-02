@@ -3341,6 +3341,8 @@ def _linux_x86_generated_header_families_impl(ctx):
     )
     if len(ctx.files.rq_offsets_c) > 1:
         fail("linux_x86_generated_headers requires at most one rq-offsets.c source")
+    if len(ctx.files.kvm_asm_offsets_c) > 1:
+        fail("linux_x86_generated_headers requires at most one kvm-asm-offsets.c source")
     cc_toolchain = find_cpp_toolchain(ctx)
     feature_configuration = _cc_feature_configuration(ctx, cc_toolchain)
     config = ctx.attr.config[LinuxConfigInfo]
@@ -3427,7 +3429,7 @@ def _linux_x86_generated_header_families_impl(ctx):
         families,
         family_dependencies["kvm_offsets"],
         "kvm_offsets",
-        ctx.file.kvm_asm_offsets_c,
+        ctx.files.kvm_asm_offsets_c[0] if ctx.files.kvm_asm_offsets_c else None,
         "arch/x86/kvm/kvm-asm-offsets.h",
         "__KVM_ASM_OFFSETS_H__",
         extra_include_dirs = [source_root + "/arch/x86/kvm"],
@@ -3475,7 +3477,7 @@ linux_x86_generated_headers = rule(
             mandatory = True,
             doc = "Map of generated-header family names to full SHA-256 content identities.",
         ),
-        "kvm_asm_offsets_c": attr.label(allow_single_file = True, mandatory = True),
+        "kvm_asm_offsets_c": attr.label(allow_files = True),
         "orc_types_h": attr.label(allow_single_file = True, mandatory = True),
         "required_features_h": attr.label(allow_files = True, mandatory = True),
         "reusable_generated_headers": attr.label_list(

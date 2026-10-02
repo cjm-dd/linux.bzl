@@ -280,6 +280,11 @@ filegroup(
 )
 
 filegroup(
+    name = "kvm_asm_offsets_c",
+    srcs = glob(["arch/x86/kvm/kvm-asm-offsets.c"], allow_empty = True),
+)
+
+filegroup(
     name = "arm64_cfi_h",
     srcs = glob([
         "arch/arm64/include/asm/cfi.h",

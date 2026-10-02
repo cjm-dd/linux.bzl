@@ -104,7 +104,7 @@ def linux_x86_host_tools(
         ),
         family_content_ids = generated_header_family_ids,
         cpufeatures_h = source_label(source_repo, "arch/x86/include/asm/cpufeatures.h"),
-        kvm_asm_offsets_c = source_label(source_repo, "arch/x86/kvm/kvm-asm-offsets.c"),
+        kvm_asm_offsets_c = source_label(source_repo, "kvm_asm_offsets_c"),
         orc_types_h = source_label(source_repo, "arch/x86/include/asm/orc_types.h"),
         required_features_h = source_label(source_repo, "x86_required_features_h"),
         reusable_generated_headers = reusable_generated_headers,
