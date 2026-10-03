@@ -2846,6 +2846,8 @@ func sourceCandidatesForObject(object string) []string {
 		out = append(out, "lib/crypto/riscv/poly1305-riscv.pl")
 	case "lib/crypto/x86/poly1305-x86_64-cryptogams.o":
 		out = append(out, "lib/crypto/x86/poly1305-x86_64-cryptogams.pl")
+	case "arch/x86/crypto/poly1305-x86_64-cryptogams.o":
+		out = append(out, "arch/x86/crypto/poly1305-x86_64-cryptogams.pl")
 	}
 	if dir, file := filepath.Split(stem); strings.HasPrefix(file, "lib-") {
 		for _, ext := range []string{".c", ".S", ".s"} {
@@ -2930,6 +2932,7 @@ func quotedInclude(line string) (string, bool) {
 }
 
 var compactGroupedSpecialObjects = map[string]bool{
+	"arch/x86/crypto/poly1305-x86_64-cryptogams.o": true,
 	"arch/arm/vdso/vdso.o":                        true,
 	"arch/arm64/kernel/vdso-wrap.o":               true,
 	"arch/arm64/kernel/vdso32-wrap.o":             true,

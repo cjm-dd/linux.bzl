@@ -461,6 +461,13 @@ def linux_source_versions_test_suite(name):
             object = "lib/crypto/x86/poly1305-x86_64-cryptogams.o",
             source_input_file = 2,
         ),
+        struct(
+            asn1_compiler = None,
+            expected_paths = ["arch/x86/crypto/poly1305-x86_64-cryptogams.S"],
+            name = "legacy_perlasm",
+            object = "arch/x86/crypto/poly1305-x86_64-cryptogams.o",
+            source_input_file = 2,
+        ),
     ]
     tests = []
     for case in generated_cases:

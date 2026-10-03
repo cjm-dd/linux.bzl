@@ -816,7 +816,10 @@ def _linux_perlasm_kind(object):
         return "arm64_with_args"
     if object == "lib/crypto/riscv/poly1305-core.o":
         return "riscv64_with_args"
-    if object == "lib/crypto/x86/poly1305-x86_64-cryptogams.o":
+    if object in [
+        "arch/x86/crypto/poly1305-x86_64-cryptogams.o",
+        "lib/crypto/x86/poly1305-x86_64-cryptogams.o",
+    ]:
         return "stdout"
     return ""
 

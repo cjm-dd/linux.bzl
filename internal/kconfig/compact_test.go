@@ -4432,6 +4432,9 @@ func TestCompactSourceBuildReadyRejectsUnknownMakeRefs(t *testing.T) {
 
 func TestSourceCandidatesForGeneratedArchitectureObjects(t *testing.T) {
 	tests := map[string][]string{
+		"arch/x86/crypto/poly1305-x86_64-cryptogams.o": {
+			"arch/x86/crypto/poly1305-x86_64-cryptogams.pl",
+		},
 		"arch/arm64/kernel/pi/lib-fdt.pi.o": {
 			"lib/fdt.c",
 			"arch/arm64/kernel/pi/fdt.c",
