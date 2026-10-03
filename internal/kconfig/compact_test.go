@@ -4543,6 +4543,21 @@ func TestSourceCandidatesForGeneratedArchitectureObjects(t *testing.T) {
 	}
 }
 
+func TestX86PurgatorySourcePrefersAssemblyWrapper(t *testing.T) {
+	root := t.TempDir()
+	legacy := "arch/x86/purgatory/purgatory.c"
+	modern := "arch/x86/purgatory/kexec-purgatory.S"
+	mustWriteSource(t, root, legacy, "int purgatory;\n")
+	object := "arch/x86/purgatory/kexec-purgatory.o"
+	if got := sourceForObject(root, "", object, nil); got != legacy {
+		t.Fatalf("legacy purgatory source = %q, want %q", got, legacy)
+	}
+	mustWriteSource(t, root, modern, "\n")
+	if got := sourceForObject(root, "", object, nil); got != modern {
+		t.Fatalf("modern purgatory source = %q, want %q", got, modern)
+	}
+}
+
 func TestCompactContentGraphEFILibstubLibFDTUsesVendoredIncludeRoot(t *testing.T) {
 	tree := mustParseString(t, "mainmenu \"EFI libstub libfdt closure\"\n")
 	kb, err := ParseKbuild(strings.NewReader(

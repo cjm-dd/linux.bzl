@@ -981,6 +981,11 @@ def _x86_purgatory_actions_test_impl(ctx):
     actions = analysistest.target_actions(env)
     compile_actions = [action for action in actions if action.mnemonic == "LinuxPurgatoryCompile"]
     filter_actions = [action for action in actions if action.mnemonic == "LinuxFlagFilter"]
+    embed_actions = [action for action in actions if action.mnemonic == "LinuxBin2C"]
+    asserts.equals(env, 1 if ctx.attr.legacy else 0, len(embed_actions))
+    if embed_actions:
+        asserts.equals(env, "kexec_purgatory", embed_actions[0].argv[-1])
+        asserts.true(env, embed_actions[0].argv[-2].endswith("/kexec-purgatory.c"))
     asserts.equals(env, 6, len(compile_actions))
     asserts.equals(env, 6, len(filter_actions))
     filter_outputs = []
@@ -1029,6 +1034,7 @@ def _x86_purgatory_actions_test_impl(ctx):
 
 _x86_purgatory_actions_test = analysistest.make(
     _x86_purgatory_actions_test_impl,
+    attrs = {"legacy": attr.bool()},
 )
 
 def _riscv_purgatory_actions_test_impl(ctx):
@@ -1967,6 +1973,29 @@ def linux_objects_fail_closed_test_suite(name):
         target_under_test = ":" + x86_purgatory_object,
     )
     generic_header_tests.append(":" + x86_purgatory_object_test)
+
+    legacy_purgatory = name + "_legacy_x86_purgatory"
+    linux_object(
+        name = legacy_purgatory,
+        arch = "x86",
+        compile_environment_id = x86_purgatory_environment_id,
+        compile_environment_index = ":" + x86_purgatory_environment_index,
+        content_id = "1818181818181818181818181818181818181818181818181818181818181818",
+        mode = "y",
+        object = "arch/x86/purgatory/kexec-purgatory.o",
+        source_input_file = 4,
+        source_input_group = 1,
+        source_input_index = ":" + x86_purgatory_source_index,
+        srcarch = "x86",
+        tags = fixture_tags,
+        version = "5.15.206",
+    )
+    _x86_purgatory_actions_test(
+        name = legacy_purgatory + "_test",
+        legacy = True,
+        target_under_test = ":" + legacy_purgatory,
+    )
+    generic_header_tests.append(":" + legacy_purgatory + "_test")
 
     powerpc_purgatory_headers = name + "_powerpc_purgatory_headers"
     _fake_generated_headers(

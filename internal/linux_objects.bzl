@@ -6320,6 +6320,18 @@ def _linux_object_impl(ctx):
         source_root,
     )
     source_version_generated_dependencies = source_version_auxiliary_path_files + generated_inputs.path_files
+    if ctx.attr.object == "arch/x86/purgatory/kexec-purgatory.o" and source_file.basename == "purgatory.c":
+        src = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/purgatory/kexec-purgatory.c")
+        purgatory_ro = [file for file in generated_inputs.files if file.basename == "purgatory.ro"][0]
+        path_mapped_run(
+            ctx.actions,
+            executable = ctx.executable._bin2c,
+            inputs = [purgatory_ro],
+            outputs = [src],
+            arguments = [purgatory_ro.path, src.path, "kexec_purgatory"],
+            mnemonic = "LinuxBin2C",
+            progress_message = "Embedding Linux purgatory %{label}",
+        )
     if generated_headers != None and hasattr(generated_headers, "path_files") and generated_headers.path_files:
         source_version_generated_dependencies.extend(generated_headers.path_files)
     expanded_remove_flags = _rewrite_source_root_flags(_expand_flag_refs(ctx.attr.remove_flags, config_values, make_values, ctx.attr.object), source_root)
@@ -6740,6 +6752,11 @@ linux_object = rule(
         "_conmakehash": attr.label(
             cfg = "exec",
             default = Label("//internal/cmd/conmakehash"),
+            executable = True,
+        ),
+        "_bin2c": attr.label(
+            default = Label("//internal/cmd/bin2c"),
+            cfg = "exec",
             executable = True,
         ),
         "_crctables": attr.label(

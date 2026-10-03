@@ -2857,6 +2857,8 @@ func sourceCandidatesForObject(object string) []string {
 		// linux_object still carries this nominal src as a direct action input;
 		// the exact producer headers are added by compactObjectActionFootprint.
 		out = append(out, "arch/x86/kernel/cpu/mkcapflags.sh")
+	case "arch/x86/purgatory/kexec-purgatory.o":
+		out = append(out, "arch/x86/purgatory/kexec-purgatory.S", "arch/x86/purgatory/purgatory.c")
 	case "drivers/tty/vt/consolemap_deftbl.o":
 		out = append(out, "drivers/tty/vt/cp437.uni")
 	case "drivers/tty/vt/defkeymap.o":
