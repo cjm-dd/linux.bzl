@@ -132,6 +132,7 @@ func TestWriteCOnlyEmitsKernelStructFields(t *testing.T) {
 			"vvar_start":        true,
 			"__kernel_vsyscall": true,
 		},
+		true,
 	)
 	generated := out.String()
 	for _, want := range []string{
@@ -144,5 +145,23 @@ func TestWriteCOnlyEmitsKernelStructFields(t *testing.T) {
 	}
 	if strings.Contains(generated, ".sym_pvclock_page") {
 		t.Error("generated output contains a symbol absent from the kernel struct")
+	}
+}
+
+func TestInitcallMatchesKernelAPI(t *testing.T) {
+	for _, returnType := range []string{"int", "void"} {
+		header := []byte("extern " + returnType + " __init init_vdso_image(const struct vdso_image *image);")
+		initcall, err := vdsoNeedsInitcall(header)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out strings.Builder
+		writeC(&out, nil, []byte{0}, &elf.File{}, "vdso_image_64", nil, nil, initcall)
+		if got := strings.Contains(out.String(), "subsys_initcall"); got != (returnType == "int") {
+			t.Errorf("%s API: generated initcall = %v", returnType, got)
+		}
+	}
+	if _, err := vdsoNeedsInitcall(nil); err == nil {
+		t.Fatal("unknown initialization API accepted")
 	}
 }

@@ -59,6 +59,10 @@ func run(rawPath, strippedPath, vdsoHeaderPath, outPath string) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", vdsoHeaderPath, err)
 	}
+	initcall, err := vdsoNeedsInitcall(vdsoHeader)
+	if err != nil {
+		return fmt.Errorf("%s: %w", vdsoHeaderPath, err)
+	}
 	file, err := elf.NewFile(bytes.NewReader(rawData))
 	if err != nil {
 		return err
@@ -88,7 +92,7 @@ func run(rawPath, strippedPath, vdsoHeaderPath, outPath string) error {
 		return err
 	}
 	var out strings.Builder
-	writeC(&out, rawData, strippedData, file, imageName(outPath), symbols, symbolFields)
+	writeC(&out, rawData, strippedData, file, imageName(outPath), symbols, symbolFields, initcall)
 	return os.WriteFile(outPath, []byte(out.String()), 0o644)
 }
 
@@ -175,6 +179,15 @@ func symbolOffset(class elf.Class, value uint64) int64 {
 
 var vdsoSymbolFieldPattern = regexp.MustCompile(`\bsym_([A-Za-z0-9_]+)\s*;`)
 
+func vdsoNeedsInitcall(header []byte) (bool, error) {
+	match := regexp.MustCompile(`\b(int|void)\s+__init\s+init_vdso_image\s*\(`).FindSubmatch(header)
+	if len(match) == 0 {
+		return false, fmt.Errorf("unrecognized init_vdso_image declaration")
+	}
+	// Older kernels initialize all images centrally in vma.c/vdso32-setup.c.
+	return string(match[1]) == "int", nil
+}
+
 func vdsoSymbolFields(header []byte) (map[string]bool, error) {
 	known := map[string]bool{}
 	for _, name := range knownSymbols {
@@ -230,7 +243,7 @@ func imageName(path string) string {
 	return strings.ReplaceAll(name, "-", "_")
 }
 
-func writeC(out *strings.Builder, rawData, strippedData []byte, file *elf.File, name string, symbols map[string]int64, symbolFields map[string]bool) {
+func writeC(out *strings.Builder, rawData, strippedData []byte, file *elf.File, name string, symbols map[string]int64, symbolFields map[string]bool, initcall bool) {
 	mappingSize := (len(strippedData) + 4095) / 4096 * 4096
 	out.WriteString("/* AUTOMATICALLY GENERATED -- DO NOT EDIT */\n\n")
 	out.WriteString("#include <linux/linkage.h>\n")
@@ -266,10 +279,12 @@ func writeC(out *strings.Builder, rawData, strippedData []byte, file *elf.File, 
 		}
 	}
 	out.WriteString("};\n\n")
-	fmt.Fprintf(out, "static __init int init_%s(void) {\n", name)
-	fmt.Fprintf(out, "\treturn init_vdso_image(&%s);\n", name)
-	out.WriteString("};\n")
-	fmt.Fprintf(out, "subsys_initcall(init_%s);\n", name)
+	if initcall {
+		fmt.Fprintf(out, "static __init int init_%s(void) {\n", name)
+		fmt.Fprintf(out, "\treturn init_vdso_image(&%s);\n", name)
+		out.WriteString("};\n")
+		fmt.Fprintf(out, "subsys_initcall(init_%s);\n", name)
+	}
 }
 
 func writeByteArray(out *strings.Builder, data []byte) {
