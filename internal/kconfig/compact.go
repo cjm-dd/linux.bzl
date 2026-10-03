@@ -1621,6 +1621,16 @@ func (memo compactVariantMemo) variantForStack(
 			)
 		}
 		actionFootprint := compactObjectActionFootprintForObject(name, flags)
+		if name == "fs/unicode/utf8-norm.o" && opts.KernelVersion != "" {
+			separateData, err := kernelVersionAtLeast(opts.KernelVersion, 5, 17)
+			if err != nil {
+				return CompactObjectVariant{}, err
+			}
+			if !separateData {
+				actionFootprint.sourceInputs = []string{"fs/unicode/utf8data.h_shipped"}
+				actionFootprint.providedIncludes = []string{"utf8data.h"}
+			}
+		}
 		actionFootprint.closureInputs = appendUniqueStrings(
 			actionFootprint.closureInputs,
 			asn1HeaderClosureInputs...,
@@ -3002,6 +3012,7 @@ var compactGroupedSpecialObjects = map[string]bool{
 	"drivers/scsi/scsi_sysfs.o":                    true,
 	"drivers/tty/vt/consolemap_deftbl.o":           true,
 	"drivers/tty/vt/ucs.o":                         true,
+	"fs/unicode/utf8-norm.o":                       true,
 	"lib/crc/crc32-main.o":                         true,
 	"lib/crc/crc64-main.o":                         true,
 	"lib/crc32.o":                                  true,

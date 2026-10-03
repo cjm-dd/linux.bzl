@@ -2074,6 +2074,12 @@ def _linux_object_generated_inputs(ctx, compiler, linker, cc_toolchain, feature_
         include_dirs.append(files[0].dirname)
         include_dir_anchors[files[0].dirname] = directory_anchor(files[0])
 
+    if ctx.attr.object == "fs/unicode/utf8-norm.o" and not _linux_version_at_least(ctx.attr.version, 5, 17):
+        header = _copy_source_tree_file(ctx, "fs/unicode/utf8data.h", "fs/unicode/utf8data.h_shipped")
+        files.append(header)
+        include_dirs.append(header.dirname)
+        include_dir_anchors[header.dirname] = directory_anchor(header)
+
     if ctx.attr.object == "drivers/scsi/scsi_sysfs.o":
         header = _source_tree_file(ctx, "include/scsi/scsi_devinfo.h")
         out = ctx.actions.declare_file(ctx.label.name + ".obj/drivers/scsi/scsi_devinfo_tbl.c")

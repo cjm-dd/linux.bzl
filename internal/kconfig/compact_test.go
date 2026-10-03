@@ -3083,6 +3083,40 @@ func TestCompactContentGraphPowerPCArchRootIncludeIsRecursive(t *testing.T) {
 	}
 }
 
+func TestLegacyUnicodeDataHeader(t *testing.T) {
+	for _, version := range []string{"5.15.206", "5.17.0"} {
+		t.Run(version, func(t *testing.T) {
+			tree := mustParseString(t, "mainmenu \"Unicode\"\n")
+			kb, err := ParseKbuild(strings.NewReader("obj-y := fs/unicode/utf8-norm.o\n"), "Kbuild")
+			if err != nil {
+				t.Fatal(err)
+			}
+			root := t.TempDir()
+			content := "int unicode;\n"
+			legacy := version == "5.15.206"
+			if legacy {
+				content = "#include \"utf8data.h\"\n"
+				mustWriteSource(t, root, "fs/unicode/utf8data.h_shipped", "static int unicode_data;\n")
+			}
+			mustWriteSource(t, root, "fs/unicode/utf8-norm.c", content)
+			metadata, err := compactMetadataBatchWithOptionsForTest(t, tree, kb, []NamedConfig{{Name: "base"}}, CompactMetadataOptions{
+				SourceRoot: root, KernelVersion: version,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			object := metadata.ObjectVariants[0]
+			inputs, err := metadata.expandedSourceInputGroup(object.SourceInputGroup, "Unicode")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := sourceInputByPath(inputs, "fs/unicode/utf8data.h_shipped").Path != ""; got != legacy {
+				t.Fatalf("shipped header present = %v, want %v", got, legacy)
+			}
+		})
+	}
+}
+
 func TestLegacyVersionObjectDoesNotRequireTimestampSource(t *testing.T) {
 	got := compactObjectActionFootprintForObject("init/version.o", nil)
 	if len(got.sourceInputs) != 0 {
