@@ -2087,6 +2087,15 @@ func compactObjectActionFootprintForObject(object string, flags []string) compac
 		footprint.providedIncludes = []string{"scsi_devinfo_tbl.c"}
 	case "kernel/debug/kdb/gen-kdb_cmds.o":
 		footprint.closureInputs = []string{"include/linux/stddef.h", "include/linux/init.h"}
+	case "security/apparmor/capability.o":
+		footprint.sourceInputs = []string{"include/uapi/linux/capability.h"}
+		footprint.providedIncludes = []string{"capability_names.h"}
+	case "security/apparmor/net.o":
+		footprint.sourceInputs = []string{"include/linux/socket.h", "include/linux/net.h"}
+		footprint.providedIncludes = []string{"net_names.h"}
+	case "security/apparmor/resource.o":
+		footprint.sourceInputs = []string{"include/uapi/asm-generic/resource.h"}
+		footprint.providedIncludes = []string{"rlim_names.h"}
 	case "drivers/tty/vt/consolemap_deftbl.o":
 		footprint.closureInputs = []string{"include/linux/types.h"}
 	case "drivers/of/empty_root.dtb.o":
@@ -3045,6 +3054,9 @@ var compactGroupedSpecialObjects = map[string]bool{
 	"drivers/tty/vt/ucs.o":                         true,
 	"fs/unicode/utf8-norm.o":                       true,
 	"kernel/debug/kdb/gen-kdb_cmds.o":              true,
+	"security/apparmor/capability.o":               true,
+	"security/apparmor/net.o":                      true,
+	"security/apparmor/resource.o":                 true,
 	"lib/crc/crc32-main.o":                         true,
 	"lib/crc/crc64-main.o":                         true,
 	"lib/crc32.o":                                  true,

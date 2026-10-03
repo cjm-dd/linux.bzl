@@ -2099,6 +2099,32 @@ def _linux_object_generated_inputs(ctx, compiler, linker, cc_toolchain, feature_
         include_dirs.append(out.dirname)
         include_dir_anchors[out.dirname] = directory_anchor(out)
 
+    apparmor_header = {
+        "security/apparmor/capability.o": ("capability", ["include/uapi/linux/capability.h"]),
+        "security/apparmor/net.o": ("net", ["include/linux/socket.h", "include/linux/net.h"]),
+        "security/apparmor/resource.o": ("rlim", ["include/uapi/asm-generic/resource.h"]),
+    }.get(ctx.attr.object)
+    if apparmor_header != None:
+        kind, paths = apparmor_header
+        inputs = [_source_tree_file(ctx, path) for path in paths]
+        out = ctx.actions.declare_file(ctx.label.name + ".obj/security/apparmor/" + kind + "_names.h")
+        args = ctx.actions.args()
+        args.add(kind)
+        args.add(out)
+        args.add_all(inputs)
+        path_mapped_run(
+            ctx.actions,
+            executable = ctx.executable._apparmorheaders,
+            inputs = inputs,
+            outputs = [out],
+            arguments = [args],
+            mnemonic = "LinuxAppArmorHeaders",
+            progress_message = "Generating Linux AppArmor name tables %{label}",
+        )
+        files.append(out)
+        include_dirs.append(out.dirname)
+        include_dir_anchors[out.dirname] = directory_anchor(out)
+
     if ctx.attr.object in ["lib/crc/crc32-main.o", "lib/crc32.o"]:
         out = ctx.actions.declare_file(
             ctx.label.name + ".obj/" + _linux_object_directory(ctx.attr.object) + "/crc32table.h",
@@ -6790,6 +6816,11 @@ linux_object = rule(
         "_kdbcmds": attr.label(
             cfg = "exec",
             default = Label("//internal/cmd/kdbcmds"),
+            executable = True,
+        ),
+        "_apparmorheaders": attr.label(
+            cfg = "exec",
+            default = Label("//internal/cmd/apparmorheaders"),
             executable = True,
         ),
         "_crctables": attr.label(
