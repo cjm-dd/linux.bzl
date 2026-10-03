@@ -1525,7 +1525,7 @@ func (memo compactVariantMemo) variantForStack(
 	delete(stack, name)
 
 	source := sourceForObject(opts.SourceRoot, opts.ObjectDir, object.object, opts.SourceRoots)
-	specialSources := compactSpecialSourcesForObject(name)
+	specialSources := compactSpecialSourcesForObject(name, config)
 	if specialSources.primary != "" {
 		source = specialSources.primary
 	}
@@ -2021,6 +2021,8 @@ type compactObjectActionFootprint struct {
 func compactObjectActionFootprintForObject(object string, flags []string) compactObjectActionFootprint {
 	footprint := compactObjectActionFootprint{}
 	switch object {
+	case "arch/x86/entry/vdso/vdso-image-64.o":
+		footprint.configSymbols = []string{"CONFIG_X86_SGX", "CONFIG_VDSO_GETRANDOM"}
 	case "drivers/tty/vt/ucs.o":
 		footprint.sourceInputs = []string{
 			"drivers/tty/vt/ucs_width_table.h_shipped",
@@ -2181,7 +2183,7 @@ func flagsNeedUTSVersionTmp(flags []string) bool {
 	return false
 }
 
-func compactSpecialSourcesForObject(object string) compactSpecialSourceInputs {
+func compactSpecialSourcesForObject(object string, config *ResolvedConfig) compactSpecialSourceInputs {
 	compiled := func(paths ...string) []compactSpecialSourceInput {
 		out := make([]compactSpecialSourceInput, 0, len(paths))
 		for _, path := range paths {
@@ -2195,10 +2197,17 @@ func compactSpecialSourcesForObject(object string) compactSpecialSourceInputs {
 			"arch/x86/entry/vdso/vdso-note.S",
 			"arch/x86/entry/vdso/vclock_gettime.c",
 			"arch/x86/entry/vdso/vgetcpu.c",
-			"arch/x86/entry/vdso/vgetrandom.c",
-			"arch/x86/entry/vdso/vgetrandom-chacha.S",
 			"arch/x86/entry/vdso/vdso.lds.S",
 		)
+		if config != nil && config.Value("CONFIG_X86_SGX") == "y" {
+			inputs = append(inputs, compiled("arch/x86/entry/vdso/vsgx.S")...)
+		}
+		if config != nil && config.Value("CONFIG_VDSO_GETRANDOM") == "y" {
+			inputs = append(inputs, compiled(
+				"arch/x86/entry/vdso/vgetrandom.c",
+				"arch/x86/entry/vdso/vgetrandom-chacha.S",
+			)...)
+		}
 		inputs = append(inputs, compactSpecialSourceInput{
 			path: "arch/x86/include/asm/vdso.h",
 		})

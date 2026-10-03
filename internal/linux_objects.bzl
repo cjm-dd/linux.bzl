@@ -1980,9 +1980,15 @@ def _linux_vdso_image_source(ctx, compiler, linker, cc_toolchain, feature_config
         ("arch/x86/entry/vdso/vdso-note.S", "arch/x86/entry/vdso/vdso-note.o"),
         ("arch/x86/entry/vdso/vclock_gettime.c", "arch/x86/entry/vdso/vclock_gettime.o"),
         ("arch/x86/entry/vdso/vgetcpu.c", "arch/x86/entry/vdso/vgetcpu.o"),
-        ("arch/x86/entry/vdso/vgetrandom.c", "arch/x86/entry/vdso/vgetrandom.o"),
-        ("arch/x86/entry/vdso/vgetrandom-chacha.S", "arch/x86/entry/vdso/vgetrandom-chacha.o"),
     ]
+    values = config.config_flags
+    if values.get("CONFIG_X86_SGX") == "y":
+        source_specs.append(("arch/x86/entry/vdso/vsgx.S", "arch/x86/entry/vdso/vsgx.o"))
+    if values.get("CONFIG_VDSO_GETRANDOM") == "y":
+        source_specs.extend([
+            ("arch/x86/entry/vdso/vgetrandom.c", "arch/x86/entry/vdso/vgetrandom.o"),
+            ("arch/x86/entry/vdso/vgetrandom-chacha.S", "arch/x86/entry/vdso/vgetrandom-chacha.o"),
+        ])
     objects = []
     for src_relpath, out_relpath in source_specs:
         objects.append(_linux_vdso_compile(

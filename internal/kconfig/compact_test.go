@@ -3782,7 +3782,7 @@ func TestCompactContentGraphARMVDSOBindsExactGeneratedBinaryAndProducerInputs(t 
 }
 
 func TestCompactContentGraphSpecialSourceManifestExcludesHostTools(t *testing.T) {
-	inputs := compactSpecialSourcesForObject("arch/x86/entry/vdso/vdso-image-64.o")
+	inputs := compactSpecialSourcesForObject("arch/x86/entry/vdso/vdso-image-64.o", nil)
 	if inputs.primary != "arch/x86/entry/vdso/vdso-note.S" {
 		t.Fatalf("vDSO primary source = %q", inputs.primary)
 	}
@@ -3802,6 +3802,32 @@ func TestCompactContentGraphSpecialSourceManifestExcludesHostTools(t *testing.T)
 	}
 	if slices.Contains(paths, "arch/x86/entry/vdso/vdso2c.c") {
 		t.Fatalf("vDSO source manifest includes host tool vdso2c.c: %v", paths)
+	}
+}
+
+func TestX86VDSOSourcesMatchConfiguredFeatures(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		values := map[string]string{}
+		if enabled {
+			values["CONFIG_X86_SGX"] = "y"
+			values["CONFIG_VDSO_GETRANDOM"] = "y"
+		}
+		inputs := compactSpecialSourcesForObject("arch/x86/entry/vdso/vdso-image-64.o", resolvedConfigValues(values))
+		var paths []string
+		for _, input := range inputs.inputs {
+			paths = append(paths, input.path)
+		}
+		for _, name := range []string{"vsgx.S", "vgetrandom.c", "vgetrandom-chacha.S"} {
+			if got := slices.Contains(paths, "arch/x86/entry/vdso/"+name); got != enabled {
+				t.Errorf("%s present = %v, want %v", name, got, enabled)
+			}
+		}
+	}
+	footprint := compactObjectActionFootprintForObject("arch/x86/entry/vdso/vdso-image-64.o", nil)
+	for _, name := range []string{"CONFIG_X86_SGX", "CONFIG_VDSO_GETRANDOM"} {
+		if !slices.Contains(footprint.configSymbols, name) {
+			t.Errorf("vDSO config footprint missing %s", name)
+		}
 	}
 }
 
