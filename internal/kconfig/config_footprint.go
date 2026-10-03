@@ -640,6 +640,21 @@ func (s *configSourceScanner) closureForSourceConfigInputsSearchProfile(
 			if !inc.potentiallyActive {
 				continue
 			}
+			if !inc.literal && strings.HasPrefix(source, "drivers/block/drbd/") &&
+				(treePath == "include/linux/genl_magic_struct.h" || treePath == "include/linux/genl_magic_func.h") &&
+				inc.spelling == "GENL_MAGIC_INCLUDE_FILE" {
+				// DRBD's generic-netlink templates inherit this header name
+				// from drbd_genl_api.h; it is not a standalone include context.
+				const api = "include/linux/drbd_genl_api.h"
+				if path, kind, ok := s.literalIncludeDefinition(api, inc.spelling); ok {
+					inc.path, inc.kind, inc.literal = path, kind, true
+					input, err := s.inputForTreePath(api)
+					if err != nil {
+						return sourceClosure{}, err
+					}
+					inputs[api] = input
+				}
+			}
 			if !inc.literal {
 				if modeledRecursiveTemplateInclude(treePath, inc.spelling) {
 					continue
@@ -1620,6 +1635,29 @@ func configIncludePath(operand string, config *ResolvedConfig) (string, bool) {
 		return "", false
 	}
 	return filepath.ToSlash(path), true
+}
+
+func (s *configSourceScanner) literalIncludeDefinition(treePath, name string) (string, sourceIncludeKind, bool) {
+	abs, ok := s.absForTreePath(treePath)
+	if !ok {
+		return "", sourceIncludeNonliteral, false
+	}
+	file, err := s.loadExactSourceFile(abs)
+	if err != nil {
+		return "", sourceIncludeNonliteral, false
+	}
+	var definitions []string
+	for _, line := range file.lines {
+		directive, rest, ok := preprocessorDirective(line.text)
+		fields := strings.Fields(rest)
+		if ok && directive == "define" && len(fields) > 1 && fields[0] == name {
+			definitions = append(definitions, strings.TrimSpace(strings.TrimPrefix(rest, name)))
+		}
+	}
+	if len(definitions) != 1 {
+		return "", sourceIncludeNonliteral, false
+	}
+	return sourceIncludeOperand(definitions[0])
 }
 
 func modeledRecursiveTemplateInclude(treePath, operand string) bool {

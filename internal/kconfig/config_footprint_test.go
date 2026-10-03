@@ -234,14 +234,14 @@ func TestConfigSourceScannerContentGraphSplicesPreprocessorDirectives(t *testing
 	}
 }
 
-func TestConfigSourceScannerContentGraphFailsClosedOnContextCarryingIncludeMacro(t *testing.T) {
+func TestConfigSourceScannerContentGraphFailsClosedOnUnmodeledIncludeMacro(t *testing.T) {
 	root := t.TempDir()
 	mustWriteSource(t, root, "drivers/block/drbd/drbd.c", "#include <linux/drbd_genl_api.h>\n")
 	mustWriteSource(t, root, "include/linux/drbd_genl_api.h", `
-#define GENL_MAGIC_INCLUDE_FILE <linux/drbd_genl.h>
+#define OTHER_INCLUDE_FILE <linux/drbd_genl.h>
 #include <linux/genl_magic_struct.h>
 `)
-	mustWriteSource(t, root, "include/linux/genl_magic_struct.h", "#include GENL_MAGIC_INCLUDE_FILE\n")
+	mustWriteSource(t, root, "include/linux/genl_magic_struct.h", "#include OTHER_INCLUDE_FILE\n")
 	mustWriteSource(t, root, "include/linux/drbd_genl.h", "#define DRBD_GENL 1\n")
 
 	scanner := newConfigSourceScanner(CompactMetadataOptions{
@@ -254,7 +254,7 @@ func TestConfigSourceScannerContentGraphFailsClosedOnContextCarryingIncludeMacro
 	for _, want := range []string{
 		"include/linux/genl_magic_struct.h:1",
 		"unresolved potentially-active nonliteral include",
-		"GENL_MAGIC_INCLUDE_FILE",
+		"OTHER_INCLUDE_FILE",
 	} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("context-carrying include error = %q, want substring %q", err, want)
@@ -786,6 +786,41 @@ func TestConfigSourceScannerContentGraphModelsTraceTemplateReinclude(t *testing.
 	}
 	if want := []string{"drivers/trace.h", "include/trace/define_trace.h"}; !reflect.DeepEqual(paths, want) {
 		t.Fatalf("trace template inputs = %v, want %v", paths, want)
+	}
+}
+
+func TestConfigSourceScannerModelsDRBDGenericNetlinkTemplates(t *testing.T) {
+	root := t.TempDir()
+	const source = "drivers/block/drbd/drbd_nl.c"
+	const api = "include/linux/drbd_genl_api.h"
+	mustWriteSource(t, root, source, "#include <linux/drbd_genl_api.h>\n#include <linux/genl_magic_func.h>\n")
+	mustWriteSource(t, root, api, "#define GENL_MAGIC_INCLUDE_FILE <linux/drbd_genl.h>\n#include <linux/genl_magic_struct.h>\n")
+	for _, name := range []string{"struct", "func"} {
+		mustWriteSource(t, root, "include/linux/genl_magic_"+name+".h", "#include GENL_MAGIC_INCLUDE_FILE\n")
+	}
+	mustWriteSource(t, root, "include/linux/drbd_genl.h", "#ifdef CONFIG_DRBD_TEST\nint field;\n#endif\n")
+	scan := func(path string) (sourceClosure, error) {
+		return newConfigSourceScanner(CompactMetadataOptions{SourceRoot: root}).closureForSource(path, nil)
+	}
+	closure, err := scan(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{api, "include/linux/drbd_genl.h", "include/linux/genl_magic_func.h", "include/linux/genl_magic_struct.h"} {
+		if !slices.Contains(sourceInputPaths(closure.sourceInputs), path) {
+			t.Errorf("closure missing %s", path)
+		}
+	}
+	if !slices.Contains(closure.refs, "CONFIG_DRBD_TEST") {
+		t.Fatal("template's config references were not scanned")
+	}
+	mustWriteSource(t, root, "drivers/other.c", "#include <linux/genl_magic_struct.h>\n")
+	if _, err := scan("drivers/other.c"); err == nil {
+		t.Fatal("unrelated template caller accepted without a macro definition")
+	}
+	mustWriteSource(t, root, api, "#define GENL_MAGIC_INCLUDE_FILE MISSING\n#include <linux/genl_magic_struct.h>\n")
+	if _, err := scan(source); err == nil {
+		t.Fatal("nonliteral template definition accepted")
 	}
 }
 
