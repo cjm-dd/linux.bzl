@@ -94,6 +94,40 @@ network-y := member.o
 	t.Fatal("full configuration payload missing")
 }
 
+func TestBuiltinCompositeCanIncludeItsOwnSourceObject(t *testing.T) {
+	tree := mustParseCompactFixture(t)
+	kb, err := ParseKbuild(strings.NewReader(`
+obj-y := before.o
+obj-$(CONFIG_NET) += dim.o
+dim-y := dim.o net_dim.o rdma_dim.o
+obj-y += after.o
+`), "Kbuild")
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, err := compactMetadataBatchForTest(t, tree, kb, []NamedConfig{{Name: "base", Flags: map[string]string{"CONFIG_NET": "y"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var order []string
+	for _, target := range configByName(metadata, "base").ObjectTargets {
+		variant := variantByTarget(metadata, target)
+		if len(variant.Members) != 0 {
+			t.Fatalf("built-in leaf unexpectedly has members: %#v", variant)
+		}
+		order = append(order, variant.Object)
+	}
+	if want := []string{"before.o", "dim.o", "net_dim.o", "rdma_dim.o", "after.o"}; !reflect.DeepEqual(order, want) {
+		t.Fatalf("archive order = %v, want %v", order, want)
+	}
+	_, err = compactMetadataBatchForTest(t, tree, kb, []NamedConfig{{Name: "module", Flags: map[string]string{
+		"CONFIG_MODULES": "y", "CONFIG_NET": "m",
+	}}})
+	if err == nil || !strings.Contains(err.Error(), "cycle in composite") {
+		t.Fatalf("self-referencing module error = %v, want cycle rejection", err)
+	}
+}
+
 func TestCompactMetadataSharesUnrelatedObjectVariants(t *testing.T) {
 	tree := mustParseCompactFixture(t)
 	kb := mustParseKbuildFixture(t)

@@ -970,6 +970,21 @@ func (kb *KbuildFile) resolvedObjects(config *ResolvedConfig) resolvedKbuildObje
 		}
 	}
 
+	// Kbuild's real-obj-y expands built-in groups once before archiving. A
+	// group may include its own .o as a source-backed leaf (lib/dim does this).
+	selfBuiltins := map[string][]string{}
+	for name, object := range byObject {
+		if object.root && object.mode == "y" && compactStringContains(object.members, name) {
+			selfBuiltins[name] = object.members
+		}
+	}
+	for name, members := range selfBuiltins {
+		byObject[name].members = nil
+		for _, member := range members {
+			byObject[member].root = true
+		}
+	}
+
 	for _, object := range byObject {
 		for _, flag := range kb.Flags {
 			if flag.Scope == "object" && !kbuildObjectFlagMatches(flag.Object, object.object) {
@@ -1024,16 +1039,25 @@ func (kb *KbuildFile) resolvedObjects(config *ResolvedConfig) resolvedKbuildObje
 	out := resolvedKbuildObjects{
 		byName: byObject,
 	}
-	for _, name := range rootOrder {
-		if object := byObject[name]; object != nil && object.root {
-			out.roots = append(out.roots, *object)
+	expandRoots := func(order []string) []resolvedKbuildObject {
+		var roots []resolvedKbuildObject
+		seen := map[string]bool{}
+		for _, name := range order {
+			names := selfBuiltins[name]
+			if names == nil {
+				names = []string{name}
+			}
+			for _, leaf := range names {
+				if object := byObject[leaf]; object != nil && object.root && !seen[leaf] {
+					roots = append(roots, *object)
+					seen[leaf] = true
+				}
+			}
 		}
+		return roots
 	}
-	for _, name := range libRootOrder {
-		if object := byObject[name]; object != nil && object.root {
-			out.libRoots = append(out.libRoots, *object)
-		}
-	}
+	out.roots = expandRoots(rootOrder)
+	out.libRoots = expandRoots(libRootOrder)
 	return out
 }
 
