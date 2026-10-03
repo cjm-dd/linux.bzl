@@ -3059,7 +3059,13 @@ def _linux_x86_static_header_family(ctx):
     headers = []
     arch_include_dir = None
     uapi_include_dir = None
-    for header in _X86_ASM_GENERIC_WRAPPERS:
+    wrappers = list(_X86_ASM_GENERIC_WRAPPERS)
+    source_paths = {file.short_path: True for file in _linux_source_tree_files(ctx)}
+    source_root = _linux_source_root_file(ctx).short_path.rsplit("/", 1)[0]
+    for header in ["export.h", "unaligned.h"]:
+        if source_root + "/include/asm-generic/" + header in source_paths:
+            wrappers.append(header)
+    for header in wrappers:
         out = ctx.actions.declare_file(base + "/arch/x86/include/generated/asm/" + header)
         ctx.actions.write(
             output = out,
