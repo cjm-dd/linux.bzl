@@ -42,6 +42,7 @@ def _config_validation_supported_test_impl(ctx):
             "CONFIG_SYSTEM_TRUSTED_KEYS": "\"\"",
         },
         {"CONFIG_MODULE_SIG": "y", "CONFIG_MODULE_SIG_FORCE": "y"},
+        {"CONFIG_IMA_APPRAISE_MODSIG": "y", "CONFIG_MODULES": "y"},
         {
             "CONFIG_BASIC_MODVERSIONS": "y",
             "CONFIG_MODVERSIONS": "y",
@@ -74,10 +75,6 @@ def config_validation_test_suite(name):
         "gendwarfksyms": (
             {"CONFIG_GENDWARFKSYMS": "y"},
             "module versioning",
-        ),
-        "ima_modsigning": (
-            {"CONFIG_IMA_APPRAISE_MODSIG": "y"},
-            "certificate or signing",
         ),
         "module_signing": (
             {"CONFIG_MODULE_SIG": "y", "CONFIG_MODULE_SIG_ALL": "y"},

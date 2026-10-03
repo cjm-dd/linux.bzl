@@ -6026,12 +6026,8 @@ def _linux_object_impl(ctx):
     generated_headers = compile_environment.generated_headers
     config_values = config.config_flags
     if ctx.attr.object == "certs/system_certificates.o":
-        for symbol in [
-            "CONFIG_IMA_APPRAISE_MODSIG",
-            "CONFIG_MODULE_SIG_ALL",
-        ]:
-            if config_values.get(symbol) in ["y", "m"]:
-                fail("linux_object %s does not support certificate signing path %s" % (ctx.label, symbol))
+        if config_values.get("CONFIG_MODULE_SIG_ALL") in ["y", "m"]:
+            fail("linux_object %s does not support certificate signing path CONFIG_MODULE_SIG_ALL" % ctx.label)
         trusted_keys = config_values.get("CONFIG_SYSTEM_TRUSTED_KEYS", "")
         if trusted_keys not in ["", "\"\""]:
             fail("linux_object %s does not support CONFIG_SYSTEM_TRUSTED_KEYS=%s" % (ctx.label, trusted_keys))

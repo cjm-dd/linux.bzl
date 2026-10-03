@@ -26,7 +26,6 @@ def validate_config_features(config, description):
 
     for symbol in [
         "CONFIG_MODULE_SIG_ALL",
-        "CONFIG_IMA_APPRAISE_MODSIG",
         "CONFIG_SYSTEM_REVOCATION_LIST",
     ]:
         if config.get(symbol, "n") in ["y", "m"]:

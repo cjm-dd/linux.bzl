@@ -1308,7 +1308,7 @@ def linux_objects_fail_closed_test_suite(name):
             }),
         },
         config_payloads = {
-            payload_id: "CONFIG_MODULE_SIG=y\nCONFIG_SYSTEM_TRUSTED_KEYS=\"\"\n",
+            payload_id: "CONFIG_IMA_APPRAISE_MODSIG=y\nCONFIG_MODULE_SIG=y\nCONFIG_SYSTEM_TRUSTED_KEYS=\"\"\n",
         },
         expected_abi = "x86_64-linux-gnu",
         generated_headers = [":" + generated_headers],
