@@ -8,17 +8,8 @@ visibility("private")
 def _graph_fixture_impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name + ".txt")
     ctx.actions.write(out, ctx.attr.arch + "\n")
-    return [
+    providers = [
         DefaultInfo(files = depset([out])),
-        LinuxKernelInfo(
-            arch = ctx.attr.arch,
-            version = "test",
-            kernel_release = out,
-            image = out,
-            vmlinux = out,
-            config = out,
-            system_map = out,
-        ),
         LinuxModuleSdkInfo(
             arch = ctx.attr.arch,
             module_symvers = out,
@@ -29,11 +20,23 @@ def _graph_fixture_impl(ctx):
         ),
         OutputGroupInfo(selected_profile = depset([out])),
     ]
+    if not ctx.attr.sdk_only:
+        providers.append(LinuxKernelInfo(
+            arch = ctx.attr.arch,
+            version = "test",
+            kernel_release = out,
+            image = out,
+            vmlinux = out,
+            config = out,
+            system_map = out,
+        ))
+    return providers
 
 multiarch_graph_fixture = rule(
     implementation = _graph_fixture_impl,
     attrs = {
         "arch": attr.string(mandatory = True),
+        "sdk_only": attr.bool(),
     },
 )
 
@@ -63,10 +66,23 @@ def _projection_test_impl(ctx):
     files = target[DefaultInfo].files.to_list()
 
     asserts.equals(env, 1, len(files))
-    asserts.equals(env, "armv7_graph.txt", files[0].basename)
+    asserts.equals(env, ctx.attr.expected_file, files[0].basename)
     return analysistest.end(env)
 
-projection_test = analysistest.make(_projection_test_impl)
+projection_test = analysistest.make(
+    _projection_test_impl,
+    attrs = {"expected_file": attr.string(default = "armv7_graph.txt")},
+)
+
+def _sdk_provider_test_impl(ctx):
+    env = analysistest.begin(ctx)
+    target = analysistest.target_under_test(env)
+    asserts.true(env, LinuxKernelInfo not in target)
+    asserts.equals(env, "armv7", target[LinuxModuleSdkInfo].arch)
+    asserts.equals(env, "armv7_sdk.txt", target[DefaultInfo].files.to_list()[0].basename)
+    return analysistest.end(env)
+
+sdk_provider_test = analysistest.make(_sdk_provider_test_impl)
 
 def _selected_file_test_impl(ctx):
     env = analysistest.begin(ctx)

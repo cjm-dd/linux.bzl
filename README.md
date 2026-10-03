@@ -283,13 +283,15 @@ load("@linux.bzl", "linux_cc_module")
 
 linux_cc_module(
     name = "hello_module",
-    kernel = "@example_kernel//:kernel",
+    kernel = "@example_kernel//:module_sdk",
     srcs = ["hello_module.c"],
 )
 ```
 
 The module consumes the default configured kernel directly; it does not need a
-module-specific image or config overlay. The same rule and source shape are
+module-specific image or config overlay. `:module_sdk` builds the configured
+kernel and module metadata without analyzing the compressed boot image;
+`:kernel` remains accepted. The same rule and source shape are
 supported for x86_64, aarch64, and armv7 kernels. As with
 Rust modules, the `kernel` provider fixes the target platform and rejects
 cross-kernel dependencies.
@@ -535,6 +537,7 @@ Every base and variant package exposes the same projection labels:
 | `:config` | Resolved kernel configuration |
 | `:system_map` | Real `System.map` |
 | `:kernel_release` | Real computed kernel release |
+| `:module_sdk` | Source-built SDK for external modules, independent of the boot image |
 | `:modules` | Configured in-tree loadable `.ko` files |
 | `:module_symvers` | Kernel and in-tree module `Module.symvers` |
 | `:modules_order` | Deterministic Kbuild module load order |

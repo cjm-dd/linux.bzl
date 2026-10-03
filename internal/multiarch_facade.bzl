@@ -100,6 +100,7 @@ def _validate_profiles(values, what):
 def linux_multiarch_kernel_exports(
         name,
         graphs,
+        module_sdks,
         platform,
         visibility = ["//visibility:public"]):
     """Selects a lazy kernel graph after transitioning to the image platform."""
@@ -112,6 +113,7 @@ def linux_multiarch_kernel_exports(
         platform = platform,
         visibility = visibility,
     )
+    linux_multiarch_file("module_sdk", module_sdks, platform, visibility)
     for field in _KERNEL_FIELDS:
         _kernel_projection(
             name = field,
@@ -123,7 +125,7 @@ def linux_multiarch_kernel_exports(
         _module_projection(
             name = field,
             field = field,
-            kernel = ":" + name,
+            kernel = ":module_sdk",
             visibility = visibility,
         )
 

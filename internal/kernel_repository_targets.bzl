@@ -324,8 +324,14 @@ def linux_image_targets(
     linux_kernel_exports(
         name = "kernel",
         graph = ":" + name,
+        module_sdk = core_outputs.module_sdk,
         platform = platform,
         arch = arch,
+    )
+    native.alias(
+        name = name + "_module_sdk",
+        actual = core_outputs.module_sdk,
+        visibility = ["//visibility:public"],
     )
 
     host_tools_by_config = {
@@ -417,5 +423,10 @@ def linux_image_targets(
             module_sdk = variant_core_outputs.module_sdk,
             version = version,
             vmlinux = variant_core_outputs.vmlinux,
+            visibility = ["//visibility:public"],
+        )
+        native.alias(
+            name = prefix + "_graph_module_sdk",
+            actual = variant_core_outputs.module_sdk,
             visibility = ["//visibility:public"],
         )

@@ -2108,12 +2108,14 @@ package(default_visibility = ["//visibility:private"])
 linux_kernel_exports(
     name = "kernel",
     graph = {graph},
+    module_sdk = {module_sdk},
     platform = {platform},
     arch = {arch},
 )
 """.format(
         arch = repr(arch),
         graph = repr(graph),
+        module_sdk = repr(graph + "_module_sdk"),
         platform = repr(platform),
         rules_repo = rules_repo,
     )

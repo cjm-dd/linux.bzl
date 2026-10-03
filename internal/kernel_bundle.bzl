@@ -126,6 +126,7 @@ _linux_module_projection = rule(
 def linux_kernel_exports(
         name,
         graph,
+        module_sdk,
         platform,
         arch,
         visibility = ["//visibility:public"]):
@@ -134,6 +135,13 @@ def linux_kernel_exports(
         name = name,
         arch = arch,
         graph = graph,
+        platform = platform,
+        visibility = visibility,
+    )
+    linux_platform_gateway(
+        name = "module_sdk",
+        arch = arch,
+        graph = module_sdk,
         platform = platform,
         visibility = visibility,
     )
@@ -148,6 +156,6 @@ def linux_kernel_exports(
         _linux_module_projection(
             name = field,
             field = field,
-            kernel = ":" + name,
+            kernel = ":module_sdk",
             visibility = visibility,
         )

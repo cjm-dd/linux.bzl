@@ -64,10 +64,12 @@ package(default_visibility = ["//visibility:public"])
 linux_multiarch_kernel_exports(
     name = "kernel",
     graphs = {graphs},
+    module_sdks = {module_sdks},
     platform = {platform},
 )
 """.format(
         graphs = _format_dict(_profile_labels(graph_repos, "_kernel_graph"), indent = "        "),
+        module_sdks = _format_dict(_profile_labels(graph_repos, "_kernel_graph_module_sdk"), indent = "        "),
         platform = repr(platform),
         rules_repo = rules_repo,
     )
@@ -84,10 +86,12 @@ package(default_visibility = ["//visibility:public"])
 linux_multiarch_kernel_exports(
     name = "kernel",
     graphs = {graphs},
+    module_sdks = {module_sdks},
     platform = {platform},
 )
 """.format(
         graphs = _format_dict(graphs, indent = "        "),
+        module_sdks = _format_dict({profile: graph + "_module_sdk" for profile, graph in graphs.items()}, indent = "        "),
         platform = repr(platform),
         rules_repo = rules_repo,
     )
