@@ -69,6 +69,20 @@ func TestRunOmitsReferenceFileWhenUnset(t *testing.T) {
 	}
 }
 
+func TestRunLegacyRelativeCRCsWithReference(t *testing.T) {
+	cfg := testConfig(t, "c")
+	cfg.linuxVersion = "5.15.206"
+	cfg.relativeCRCs = true
+	cfg.reference = "empty.symref"
+	executor := &fakeExecutor{nmOutput: "00000000 r __ksymtab_exported\n"}
+	if err := run(cfg, executor); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(executor.genksymsArgs, " "), "-R -r empty.symref"; got != want {
+		t.Fatalf("genksyms args = %q, want %q", got, want)
+	}
+}
+
 func testConfig(t *testing.T, mode string) config {
 	t.Helper()
 	return config{
@@ -183,6 +197,7 @@ func TestParseArgsAcceptsReferenceFile(t *testing.T) {
 		"-compiler", "clang",
 		"-genksyms", "genksyms",
 		"-reference", "empty.symref",
+		"-relative-crcs",
 		"-out", ".example.o.cmd",
 		"--", "-E", "example.c",
 	})
@@ -191,6 +206,9 @@ func TestParseArgsAcceptsReferenceFile(t *testing.T) {
 	}
 	if got, want := cfg.reference, "empty.symref"; got != want {
 		t.Fatalf("reference = %q, want %q", got, want)
+	}
+	if !cfg.relativeCRCs {
+		t.Fatal("relative CRC flag was not parsed")
 	}
 }
 

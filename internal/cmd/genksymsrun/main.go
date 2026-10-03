@@ -22,6 +22,7 @@ type config struct {
 	reference    string
 	out          string
 	linuxVersion string
+	relativeCRCs bool
 	compilerArgs []string
 }
 
@@ -44,6 +45,7 @@ func parseArgs(args []string) (config, error) {
 	flags.StringVar(&cfg.reference, "reference", "", "optional genksyms reference file")
 	flags.StringVar(&cfg.out, "out", "", "output modpost command data")
 	flags.StringVar(&cfg.linuxVersion, "linux-version", "", "Linux source version (required for asm mode)")
+	flags.BoolVar(&cfg.relativeCRCs, "relative-crcs", false, "emit legacy relative CRC linker data")
 	if err := flags.Parse(args); err != nil {
 		return config{}, err
 	}
@@ -204,6 +206,9 @@ func run(cfg config, executor toolExecutor) error {
 	if len(symbols) != 0 {
 		var compilerInput io.Reader
 		var genksymsArgs []string
+		if cfg.relativeCRCs {
+			genksymsArgs = append(genksymsArgs, "-R")
+		}
 		if cfg.mode == "asm" {
 			source, err := assemblyInput(cfg.linuxVersion, symbols)
 			if err != nil {
@@ -213,7 +218,7 @@ func run(cfg config, executor toolExecutor) error {
 			compilerInput = strings.NewReader(source)
 		}
 		if cfg.reference != "" {
-			genksymsArgs = []string{"-r", cfg.reference}
+			genksymsArgs = append(genksymsArgs, "-r", cfg.reference)
 		}
 		if err := executor.generate(cfg.compiler, cfg.compilerArgs, compilerInput, cfg.genksyms, genksymsArgs, output); err != nil {
 			output.Close()

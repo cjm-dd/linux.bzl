@@ -2701,6 +2701,8 @@ var compactSymversionConfigSymbols = []string{
 	"CONFIG_BASIC_MODVERSIONS",
 	"CONFIG_GENKSYMS",
 	"CONFIG_MODVERSIONS",
+	"CONFIG_MODULE_REL_CRCS",
+	"CONFIG_LTO_CLANG",
 }
 
 func compactSymversionsEnabled(config *ResolvedConfig, source string) bool {

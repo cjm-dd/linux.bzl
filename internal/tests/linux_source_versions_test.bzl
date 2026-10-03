@@ -205,6 +205,27 @@ def _grouped_raw_assembler_test_impl(ctx):
 
 _grouped_raw_assembler_test = analysistest.make(_grouped_raw_assembler_test_impl)
 
+def _legacy_symversion_link_test_impl(ctx):
+    env = analysistest.begin(ctx)
+    target = analysistest.target_under_test(env)
+    info = target[LinuxObjectInfo] if LinuxObjectInfo in target else target[LinuxObjectActionGroupInfo].objects["regular"]
+    actions = analysistest.target_actions(env)
+    links = _actions_with_mnemonic(actions, "LinuxRelocatableLink")
+    asserts.equals(env, 1 if ctx.attr.legacy else 0, len(links))
+    asserts.equals(env, 1, len(info.symversion_records))
+    if ctx.attr.legacy and links and info.symversion_records:
+        link = links[0]
+        script = info.symversion_records[0].cmd
+        asserts.equals(env, [info.output], link.outputs.to_list())
+        asserts.true(env, script in link.inputs.to_list(), "CRC script must be a linker input")
+        asserts.true(env, "-Wl,-T," + script.path in link.argv, "CRC assignments must be linked into the published object")
+    return analysistest.end(env)
+
+_legacy_symversion_link_test = analysistest.make(
+    _legacy_symversion_link_test_impl,
+    attrs = {"legacy": attr.bool()},
+)
+
 def _mixed_module_metadata_test_impl(ctx):
     env = analysistest.begin(ctx)
     info = analysistest.target_under_test(env)[LinuxObjectInfo]
@@ -570,6 +591,54 @@ def linux_source_versions_test_suite(name):
         target_under_test = ":" + raw_srcversion_all,
     )
     tests.append(":" + raw_srcversion_all_test)
+
+    for version in ["5.15.206", "5.19.0"]:
+        for grouped in [False, True]:
+            target = name + "_symversion_link_" + version.replace(".", "_") + ("_grouped" if grouped else "_individual")
+            common = dict(
+                name = target,
+                compile_environment_index = ":" + compile_environments,
+                genksyms = "//internal/cmd/runandwrite",
+                mode = "m",
+                symversions = True,
+                tags = fixture_tags,
+                version = version,
+            )
+            if grouped:
+                linux_object_action_group(
+                    arch = "x86",
+                    language = "asm",
+                    objects = {"regular": json.encode({
+                        "compile_environment": _MODVERSION_ENVIRONMENT,
+                        "content_id": "a" * 64,
+                        "object": "drivers/test/regular.o",
+                        "source_input_file": 1,
+                        "source_input_group": 1,
+                    })},
+                    reachable_configs = ["base"],
+                    reachability_id = "b" * 64,
+                    recipe_id = "c" * 64,
+                    source_input_index = ":" + grouped_source_inputs,
+                    srcarch = "x86",
+                    **common
+                )
+            else:
+                linux_object(
+                    compile_environment_id = _MODVERSION_ENVIRONMENT,
+                    content_id = "a" * 64,
+                    object = "drivers/test/regular.o",
+                    source_input_file = 5,
+                    source_input_group = 5,
+                    source_input_index = ":" + source_inputs,
+                    **common
+                )
+            test = target + "_test"
+            _legacy_symversion_link_test(
+                name = test,
+                legacy = version == "5.15.206",
+                target_under_test = ":" + target,
+            )
+            tests.append(":" + test)
 
     grouped_raw = name + "_grouped_raw"
     linux_object_action_group(

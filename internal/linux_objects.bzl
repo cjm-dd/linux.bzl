@@ -6040,6 +6040,10 @@ def _linux_object_impl(ctx):
 
     out = ctx.actions.declare_file(ctx.label.name + ".o")
     cmd = ctx.actions.declare_file(ctx.label.name + ".cmd")
+    versioned_out = None
+    if _linux_legacy_symversions(ctx, config):
+        versioned_out = out
+        out = ctx.actions.declare_file(ctx.label.name + ".unversioned.o")
     compile_object = _linux_compile_object_name(ctx.attr.object)
     objcopy_flags = _linux_objcopy_flags_for_object(ctx.attr.object, ctx.attr.arch)
     needs_relacheck = _linux_object_needs_relacheck(ctx.attr.object)
@@ -6584,6 +6588,8 @@ def _linux_object_impl(ctx):
         runner_args.add("-genksyms", ctx.executable.genksyms)
         runner_args.add("-out", symversion_cmd)
         runner_args.add("-linux-version", ctx.attr.version)
+        if versioned_out != None and config_values.get("CONFIG_MODULE_REL_CRCS") == "y":
+            runner_args.add("-relative-crcs")
         symversion_extra_inputs = []
         if not _linux_version_at_least(ctx.attr.version, 6, 18):
             reference = ctx.actions.declare_file(
@@ -6613,6 +6619,9 @@ def _linux_object_impl(ctx):
             cmd = symversion_cmd,
             object = ctx.attr.object,
         ))
+        if versioned_out != None:
+            _linux_apply_legacy_symversions(ctx, cc_toolchain, feature_configuration, out, symversion_cmd, versioned_out)
+            out = versioned_out
 
     source_version_records = []
     if source_version_depfile != None:
@@ -6956,6 +6965,30 @@ def _linux_arm64_nvhe_linker_script(ctx, compiler, cc_toolchain, feature_configu
         progress_message = "Preprocessing Linux arm64 nVHE linker script %{label}",
     )
     return out
+
+def _linux_legacy_symversions(ctx, config):
+    enabled = ctx.attr.symversions and not _linux_version_at_least(ctx.attr.version, 5, 19)
+    if enabled and config.config_flags.get("CONFIG_LTO_CLANG") == "y":
+        fail("legacy symbol-version linker scripts with CONFIG_LTO_CLANG are not supported")
+    return enabled
+
+def _linux_apply_legacy_symversions(ctx, cc_toolchain, feature_configuration, object, script, output):
+    # Before 5.19, modpost reads CRCs from ELF symbols, not .cmd #SYMVER records.
+    linker = cc_common.get_tool_for_action(
+        feature_configuration = feature_configuration,
+        action_name = CPP_LINK_EXECUTABLE_ACTION_NAME,
+    )
+    _linux_link_relocatable(
+        ctx,
+        linker,
+        cc_toolchain,
+        feature_configuration,
+        "",
+        [object],
+        extra_inputs = [script],
+        linker_script = script,
+        output = output,
+    )
 
 def _linux_link_relocatable(ctx, linker, cc_toolchain, feature_configuration, out_relpath, objects, flags = [], extra_inputs = [], linker_script = None, output = None):
     out = output if output else ctx.actions.declare_file(ctx.label.name + ".obj/" + out_relpath)
@@ -9803,11 +9836,13 @@ linux_cache_shape_check = rule(
 # Narrow private helper surface shared with sibling internal rules. Keeping these
 # functions behind one struct avoids making them part of the root public API.
 linux_module_cc_helpers = struct(
+    apply_legacy_symversions = _linux_apply_legacy_symversions,
     compile_flags = _linux_compile_flags,
     configure_features = _cc_feature_configuration,
     cpp_undef_flags = _linux_cpp_undef_flags,
     llvm_nm = _llvm_nm,
     llvm_objcopy = _llvm_objcopy,
+    legacy_symversions = _linux_legacy_symversions,
     module_flags = _linux_module_flags,
     object_name_flags = _linux_object_name_flags,
     source_include_dirs = _linux_ordered_include_dirs,

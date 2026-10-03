@@ -714,6 +714,10 @@ def _linux_object_action_group_impl(ctx):
         out = ctx.actions.declare_file(
             ctx.label.name + ".objects/" + spec.content_id + "/" + spec.object,
         )
+        versioned_out = None
+        if linux_module_cc_helpers.legacy_symversions(ctx, config):
+            versioned_out = out
+            out = ctx.actions.declare_file(ctx.label.name + ".unversioned/" + spec.content_id + "/" + spec.object)
         compile_out = out
         if use_objtool:
             compile_out = ctx.actions.declare_file(
@@ -793,6 +797,8 @@ def _linux_object_action_group_impl(ctx):
             runner_args.add("-genksyms", ctx.executable.genksyms)
             runner_args.add("-out", symversion_cmd)
             runner_args.add("-linux-version", ctx.attr.version)
+            if versioned_out != None and config.config_flags.get("CONFIG_MODULE_REL_CRCS") == "y":
+                runner_args.add("-relative-crcs")
             symversion_extra_inputs = []
             if not _version_at_least(ctx.attr.version, 6, 18):
                 reference = ctx.actions.declare_file(
@@ -834,6 +840,9 @@ def _linux_object_action_group_impl(ctx):
                 cmd = symversion_cmd,
                 object = spec.object,
             ))
+            if versioned_out != None:
+                linux_module_cc_helpers.apply_legacy_symversions(ctx, cc_toolchain, feature_configuration, out, symversion_cmd, versioned_out)
+                out = versioned_out
         source_version_records = []
         if source_version_depfile != None:
             generated_path_files = []
