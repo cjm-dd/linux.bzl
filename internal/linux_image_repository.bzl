@@ -959,6 +959,8 @@ def _generate_content_graph(
         "//:_base_asn1_compiler_tool",
         "-source_genksyms",
         "//:_base_genksyms_tool",
+        "-source_selinux_genheaders",
+        "//:_base_selinux_genheaders_tool",
         "-allow_shell",
         "-visibility",
         "//:__subpackages__",

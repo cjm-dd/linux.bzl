@@ -233,6 +233,31 @@ cc_library(
 )
 
 cc_library(
+    name = "selinux_genheaders_headers_cc",
+    hdrs = glob([
+        "security/selinux/include/classmap.h",
+        "security/selinux/include/initial_sid_to_string.h",
+    ], allow_empty = True),
+    strip_include_prefix = "security/selinux/include",
+    deps = [
+        ":host_uapi_headers_cc",
+        ":host_compiler_types_cc",
+    ],
+)
+
+cc_library(
+    name = "host_uapi_headers_cc",
+    hdrs = glob(["include/uapi/**/*.h"]),
+    strip_include_prefix = "include/uapi",
+)
+
+cc_library(
+    name = "host_compiler_types_cc",
+    hdrs = glob(["include/linux/compiler_types.h"], allow_empty = True),
+    strip_include_prefix = "include",
+)
+
+cc_library(
     name = "tools_include_headers_cc",
     hdrs = glob(["tools/include/**/*.h"]),
     strip_include_prefix = "tools/include",

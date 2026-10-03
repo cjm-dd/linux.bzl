@@ -305,6 +305,7 @@ func run() (exitCode int) {
 		sourceLabelPackage       = flag.String("source_label_package", "", "Bazel package containing Linux source file labels for generated compact object BUILD files")
 		sourceASN1Compiler       = flag.String("source_asn1_compiler", "", "Bazel label for the kernel source tree's scripts/asn1_compiler tool emitted into source-backed compact object rules")
 		sourceGenksyms           = flag.String("source_genksyms", "", "Bazel label for the kernel source tree's scripts/genksyms executable emitted into source-backed compact object rules")
+		sourceSELinuxGenheaders  = flag.String("source_selinux_genheaders", "", "Bazel label for the kernel source tree's SELinux genheaders executable")
 		sourceObjtool            = flag.String("source_objtool", "", "Bazel label for the kernel source tree's objtool executable emitted into x86 source-backed compact object rules")
 		sourceRelacheck          = flag.String("source_relacheck", "", "Bazel label for the kernel source tree's arch/arm64/kernel/pi/relacheck tool emitted into arm64 .pi.o rules")
 		sourceRootLabel          = flag.String("source_root_label", "", "Bazel label for a file in the Linux source root, emitted into source-backed compact object rules")
@@ -605,20 +606,21 @@ func run() (exitCode int) {
 				objectPkg = inferLabelPackage(*compactBuildfileOut)
 			}
 			data, err := metadata.BuildFile(kconfig.CompactBuildFileOptions{
-				Arch:               vars["ARCH"],
-				Version:            *kernelVersion,
-				Visibility:         []string(visibility),
-				RuleLoadLabel:      *linuxObjectsLoad,
-				BaseConfig:         *compactBaseConfig,
-				ObjectLabelPackage: objectPkg,
-				Exports:            exports,
-				SourceLabelPackage: *sourceLabelPackage,
-				SourceASN1Compiler: *sourceASN1Compiler,
-				SourceGenksyms:     *sourceGenksyms,
-				SourceObjtool:      *sourceObjtool,
-				SourceRelacheck:    *sourceRelacheck,
-				SourceRootLabel:    *sourceRootLabel,
-				Srcarch:            vars["SRCARCH"],
+				Arch:                    vars["ARCH"],
+				Version:                 *kernelVersion,
+				Visibility:              []string(visibility),
+				RuleLoadLabel:           *linuxObjectsLoad,
+				BaseConfig:              *compactBaseConfig,
+				ObjectLabelPackage:      objectPkg,
+				Exports:                 exports,
+				SourceLabelPackage:      *sourceLabelPackage,
+				SourceASN1Compiler:      *sourceASN1Compiler,
+				SourceGenksyms:          *sourceGenksyms,
+				SourceSELinuxGenheaders: *sourceSELinuxGenheaders,
+				SourceObjtool:           *sourceObjtool,
+				SourceRelacheck:         *sourceRelacheck,
+				SourceRootLabel:         *sourceRootLabel,
+				Srcarch:                 vars["SRCARCH"],
 			})
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to generate compact BUILD file: %v\n", err)

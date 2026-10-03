@@ -51,6 +51,7 @@ def linux_common_host_tools(
         source_tree = [source_label(source_repo, "all_files")]
     asn1_compiler = target_prefix + "_asn1_compiler_tool"
     genksyms_tool = target_prefix + "_genksyms_tool"
+    selinux_genheaders = target_prefix + "_selinux_genheaders_tool"
     kallsyms_tool = target_prefix + "_kallsyms_tool"
     resolve_btfids_tool = target_prefix + "_resolve_btfids_tool"
     sorttable_tool = target_prefix + "_sorttable_tool"
@@ -97,6 +98,13 @@ def linux_common_host_tools(
         srcs = [source_label(source_repo, "scripts/asn1_compiler.c")],
         visibility = visibility,
         deps = [source_label(source_repo, "linux_headers_cc")],
+    )
+
+    cc_binary(
+        name = selinux_genheaders,
+        srcs = [source_label(source_repo, "scripts/selinux/genheaders/genheaders.c")],
+        visibility = visibility,
+        deps = [source_label(source_repo, "selinux_genheaders_headers_cc")],
     )
 
     cc_binary(

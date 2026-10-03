@@ -115,20 +115,21 @@ type CompactActionGroup struct {
 }
 
 type CompactBuildFileOptions struct {
-	Arch               string
-	Version            string
-	Visibility         []string
-	RuleLoadLabel      string
-	BaseConfig         string
-	ObjectLabelPackage string
-	Exports            []string
-	SourceLabelPackage string
-	SourceASN1Compiler string
-	SourceGenksyms     string
-	SourceObjtool      string
-	SourceRelacheck    string
-	SourceRootLabel    string
-	Srcarch            string
+	Arch                    string
+	Version                 string
+	Visibility              []string
+	RuleLoadLabel           string
+	BaseConfig              string
+	ObjectLabelPackage      string
+	Exports                 []string
+	SourceLabelPackage      string
+	SourceASN1Compiler      string
+	SourceGenksyms          string
+	SourceSELinuxGenheaders string
+	SourceObjtool           string
+	SourceRelacheck         string
+	SourceRootLabel         string
+	Srcarch                 string
 }
 
 type CompactMetadataOptions struct {
@@ -2191,6 +2192,16 @@ func compactObjectActionFootprintForObject(object string, flags []string) compac
 			"scripts/dtc/libfdt/"+source,
 		)
 	}
+	if strings.HasPrefix(object, "security/selinux/") {
+		footprint.sourceInputs = appendUniqueStrings(footprint.sourceInputs,
+			"scripts/selinux/genheaders/genheaders.c",
+			"security/selinux/include/classmap.h",
+			"security/selinux/include/initial_sid_to_string.h",
+			"include/uapi/linux/capability.h",
+			"include/uapi/linux/socket.h",
+		)
+		footprint.providedIncludes = appendUniqueStrings(footprint.providedIncludes, "flask.h", "av_permissions.h")
+	}
 	if strings.HasSuffix(object, ".asn1.o") {
 		footprint.sourceInputs = appendUniqueStrings(
 			footprint.sourceInputs,
@@ -3098,7 +3109,7 @@ func (m *CompactMetadata) groupedCompileFallbackReason(variant CompactObjectVari
 	if len(variant.RemoveFlags) != 0 {
 		return "has Kbuild remove flags"
 	}
-	if compactGroupedSpecialObjects[variant.Object] {
+	if compactGroupedSpecialObjects[variant.Object] || strings.HasPrefix(variant.Object, "security/selinux/") {
 		return "requires generated-object actions"
 	}
 	if strings.HasSuffix(variant.Object, ".asn1.o") ||
@@ -3473,6 +3484,12 @@ func (m *CompactMetadata) objectBuildFile(opts CompactBuildFileOptions) ([]byte,
 		}
 		if opts.SourceASN1Compiler != "" && strings.HasSuffix(variant.Object, ".asn1.o") {
 			r.SetAttr("asn1_compiler", opts.SourceASN1Compiler)
+		}
+		if strings.HasPrefix(variant.Object, "security/selinux/") {
+			if opts.SourceSELinuxGenheaders == "" {
+				return nil, fmt.Errorf("source-backed SELinux object %q requires a genheaders label", variant.Object)
+			}
+			r.SetAttr("selinux_genheaders", opts.SourceSELinuxGenheaders)
 		}
 		if opts.Version != "" {
 			r.SetAttr("version", opts.Version)

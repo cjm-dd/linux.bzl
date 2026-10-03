@@ -2196,6 +2196,58 @@ func TestCompactContentGraphContentIDsTrackOnlyTransitiveInputs(t *testing.T) {
 	}
 }
 
+func TestCompactSELinuxGeneratedHeaders(t *testing.T) {
+	tree := mustParseCompactFixture(t)
+	kb, err := ParseKbuild(strings.NewReader("obj-y += security/selinux/avc.o\n"), "Kbuild")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceRoot := t.TempDir()
+	mustWriteSource(t, sourceRoot, "security/selinux/avc.c", "#include \"flask.h\"\n#include \"av_permissions.h\"\n")
+	for _, path := range compactObjectActionFootprintForObject("security/selinux/avc.o", nil).sourceInputs {
+		mustWriteSource(t, sourceRoot, path, "/* generator input */\n")
+	}
+	writeCompactContentGraphForcedInputs(t, sourceRoot)
+	generate := func() (*CompactMetadata, CompactObjectVariant) {
+		t.Helper()
+		metadata, err := compactMetadataBatchWithOptionsForTest(t, tree, kb, []NamedConfig{{Name: "base"}}, CompactMetadataOptions{
+			SourceRoot:            sourceRoot,
+			CompileEnvironmentABI: "object-abi-v1",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return metadata, variantByTarget(metadata, objectTarget(metadata, configByName(metadata, "base"), "security/selinux/avc.o"))
+	}
+	metadata, before := generate()
+	options := CompactBuildFileOptions{
+		BaseConfig:         "base",
+		SourceLabelPackage: "@linux//",
+		SourceRootLabel:    "@linux//:Kconfig",
+	}
+	if _, err := metadata.BuildFile(options); err == nil || !strings.Contains(err.Error(), "requires a genheaders label") {
+		t.Fatalf("BuildFile without producer: %v", err)
+	}
+	options.SourceSELinuxGenheaders = "//tools:selinux_genheaders"
+	content, err := metadata.BuildFile(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := build.ParseBuild("selinux.BUILD.bazel", content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule := parsed.RuleNamed(before.Target)
+	if rule == nil || rule.Kind() != "linux_object" || rule.AttrString("selinux_genheaders") != options.SourceSELinuxGenheaders {
+		t.Fatalf("SELinux compile bypassed the header producer:\n%s", content)
+	}
+	mustWriteSource(t, sourceRoot, "security/selinux/include/classmap.h", "/* changed security classes */\n")
+	_, changed := generate()
+	if before.ContentID == changed.ContentID {
+		t.Fatal("security class mapping change did not invalidate its consumer")
+	}
+}
+
 func TestCompactContentGraphValidationRecomputesContentIDs(t *testing.T) {
 	generate := func(t *testing.T) *CompactMetadata {
 		t.Helper()

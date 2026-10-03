@@ -2125,6 +2125,27 @@ def _linux_object_generated_inputs(ctx, compiler, linker, cc_toolchain, feature_
         include_dirs.append(out.dirname)
         include_dir_anchors[out.dirname] = directory_anchor(out)
 
+    if ctx.attr.object.startswith("security/selinux/"):
+        if not ctx.executable.selinux_genheaders:
+            fail("SELinux objects require the kernel's genheaders executable")
+        headers = [
+            ctx.actions.declare_file(ctx.label.name + ".obj/security/selinux/" + name)
+            for name in ["flask.h", "av_permissions.h"]
+        ]
+        args = ctx.actions.args()
+        args.add_all(headers)
+        path_mapped_run(
+            ctx.actions,
+            executable = ctx.executable.selinux_genheaders,
+            outputs = headers,
+            arguments = [args],
+            mnemonic = "LinuxSELinuxHeaders",
+            progress_message = "Generating Linux SELinux class and permission headers %{label}",
+        )
+        files.extend(headers)
+        include_dirs.append(headers[0].dirname)
+        include_dir_anchors[headers[0].dirname] = directory_anchor(headers[0])
+
     if ctx.attr.object in ["lib/crc/crc32-main.o", "lib/crc32.o"]:
         out = ctx.actions.declare_file(
             ctx.label.name + ".obj/" + _linux_object_directory(ctx.attr.object) + "/crc32table.h",
@@ -6750,6 +6771,11 @@ linux_object = rule(
         "genksyms": attr.label(
             cfg = "exec",
             doc = "Kernel-source-specific scripts/genksyms/genksyms executable.",
+            executable = True,
+        ),
+        "selinux_genheaders": attr.label(
+            cfg = "exec",
+            doc = "Kernel-source-specific SELinux genheaders executable.",
             executable = True,
         ),
         "objtool": attr.label(
