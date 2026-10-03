@@ -2061,6 +2061,8 @@ func compactObjectActionFootprintForObject(object string, flags []string) compac
 	case "drivers/scsi/scsi_sysfs.o":
 		footprint.sourceInputs = []string{"include/scsi/scsi_devinfo.h"}
 		footprint.providedIncludes = []string{"scsi_devinfo_tbl.c"}
+	case "kernel/debug/kdb/gen-kdb_cmds.o":
+		footprint.closureInputs = []string{"include/linux/stddef.h", "include/linux/init.h"}
 	case "drivers/tty/vt/consolemap_deftbl.o":
 		footprint.closureInputs = []string{"include/linux/types.h"}
 	case "drivers/of/empty_root.dtb.o":
@@ -2738,6 +2740,9 @@ func compactSymversionsEnabled(config *ResolvedConfig, source string) bool {
 }
 
 func compactEffectiveSourceLanguage(source string) string {
+	if filepath.Base(source) == "kdb_cmds" {
+		return "c"
+	}
 	switch filepath.Ext(source) {
 	case ".S", ".s", ".dts", ".dtso", ".pl":
 		return "asm"
@@ -2887,6 +2892,8 @@ func sourceCandidatesForObject(object string) []string {
 		out = append(out, "drivers/tty/vt/cp437.uni")
 	case "drivers/tty/vt/defkeymap.o":
 		out = append(out, "drivers/tty/vt/defkeymap.c_shipped")
+	case "kernel/debug/kdb/gen-kdb_cmds.o":
+		out = append(out, "kernel/debug/kdb/kdb_cmds")
 	case "fs/unicode/utf8data.o":
 		out = append(out, "fs/unicode/utf8data.c_shipped")
 	case "lib/crypto/arm64/poly1305-core.o":
@@ -3013,6 +3020,7 @@ var compactGroupedSpecialObjects = map[string]bool{
 	"drivers/tty/vt/consolemap_deftbl.o":           true,
 	"drivers/tty/vt/ucs.o":                         true,
 	"fs/unicode/utf8-norm.o":                       true,
+	"kernel/debug/kdb/gen-kdb_cmds.o":              true,
 	"lib/crc/crc32-main.o":                         true,
 	"lib/crc/crc64-main.o":                         true,
 	"lib/crc32.o":                                  true,

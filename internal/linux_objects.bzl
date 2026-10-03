@@ -6101,6 +6101,23 @@ def _linux_object_impl(ctx):
             path = ctx.attr.object[:-len(".o")] + ".c",
         )
         source_version_generated_path_files = [source_version_generated_primary]
+    if ctx.attr.object == "kernel/debug/kdb/gen-kdb_cmds.o":
+        src = ctx.actions.declare_file(ctx.label.name + ".obj/kernel/debug/kdb/gen-kdb_cmds.c")
+        args = ctx.actions.args()
+        args.add(source_file)
+        args.add(src)
+        path_mapped_run(
+            ctx.actions,
+            executable = ctx.executable._kdbcmds,
+            inputs = [source_file],
+            outputs = [src],
+            arguments = [args],
+            mnemonic = "LinuxKDBCommands",
+            progress_message = "Generating Linux debugger commands %{label}",
+        )
+        generated_sources.append(src)
+        source_version_generated_primary = struct(file = src, path = "kernel/debug/kdb/gen-kdb_cmds.c")
+        source_version_generated_path_files = [source_version_generated_primary]
     if ctx.attr.object.endswith(".asn1.o"):
         if not ctx.executable.asn1_compiler:
             fail("linux_object %s builds an ASN.1 source and requires asn1_compiler" % ctx.label)
@@ -6768,6 +6785,11 @@ linux_object = rule(
         "_bin2c": attr.label(
             default = Label("//internal/cmd/bin2c"),
             cfg = "exec",
+            executable = True,
+        ),
+        "_kdbcmds": attr.label(
+            cfg = "exec",
+            default = Label("//internal/cmd/kdbcmds"),
             executable = True,
         ),
         "_crctables": attr.label(
