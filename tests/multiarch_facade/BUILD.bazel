@@ -52,7 +52,11 @@ linux_multiarch_kernel_exports(
     name = arch + "_sdk",
     arch = arch,
     sdk_only = True,
-) for arch in ["aarch64", "armv7", "x86_64"]]
+) for arch in [
+    "aarch64",
+    "armv7",
+    "x86_64",
+]]
 
 sdk_provider_test(
     name = "armv7_module_sdk_test",
@@ -95,8 +99,8 @@ test_suite(
     tests = [
         ":armv7_config_projection_test",
         ":armv7_facade_provider_test",
-        ":armv7_modules_projection_test",
         ":armv7_module_sdk_test",
+        ":armv7_modules_projection_test",
         ":armv7_selected_file_test",
     ],
 )

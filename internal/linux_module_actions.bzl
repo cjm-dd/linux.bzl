@@ -279,6 +279,7 @@ def _devicetable_offsets(ctx, helpers, kernel, target, source_files):
 def _build_modpost(ctx, helpers, kernel, target, source_files):
     devicetable_offsets = _devicetable_offsets(ctx, helpers, kernel, target, source_files)
     elfconfig = ctx.actions.declare_file(ctx.label.name + ".module_prep/scripts/mod/elfconfig.h")
+
     # All supported target architectures are little-endian. Older modpost also
     # needs the host byte order to decode cross-compiled ELF files.
     ctx.actions.write(elfconfig, """#define KERNEL_ELFCLASS %s
