@@ -6418,12 +6418,14 @@ def _linux_object_impl(ctx):
     if ctx.attr.object == "arch/x86/purgatory/kexec-purgatory.o" and source_file.basename == "purgatory.c":
         src = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/purgatory/kexec-purgatory.c")
         purgatory_ro = [file for file in generated_inputs.files if file.basename == "purgatory.ro"][0]
+        embed_args = ctx.actions.args()
+        embed_args.add_all([purgatory_ro, src, "kexec_purgatory"])
         path_mapped_run(
             ctx.actions,
             executable = ctx.executable._bin2c,
             inputs = [purgatory_ro],
             outputs = [src],
-            arguments = [purgatory_ro.path, src.path, "kexec_purgatory"],
+            arguments = [embed_args],
             mnemonic = "LinuxBin2C",
             progress_message = "Embedding Linux purgatory %{label}",
         )

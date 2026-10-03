@@ -986,6 +986,8 @@ def _x86_purgatory_actions_test_impl(ctx):
     if embed_actions:
         asserts.equals(env, "kexec_purgatory", embed_actions[0].argv[-1])
         asserts.true(env, embed_actions[0].argv[-2].endswith("/kexec-purgatory.c"))
+        for path in embed_actions[0].argv[-3:-1]:
+            asserts.true(env, path.startswith("bazel-out/cfg/bin/"), "unmapped embed path: " + path)
     asserts.equals(env, 6, len(compile_actions))
     asserts.equals(env, 6, len(filter_actions))
     filter_outputs = []
@@ -1035,6 +1037,7 @@ def _x86_purgatory_actions_test_impl(ctx):
 _x86_purgatory_actions_test = analysistest.make(
     _x86_purgatory_actions_test_impl,
     attrs = {"legacy": attr.bool()},
+    config_settings = {"//command_line_option:experimental_output_paths": "strip"},
 )
 
 def _riscv_purgatory_actions_test_impl(ctx):
