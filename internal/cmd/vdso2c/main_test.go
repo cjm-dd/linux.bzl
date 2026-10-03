@@ -6,6 +6,23 @@ import (
 	"testing"
 )
 
+func TestSymbolOffsetSignExtendsVvarAddresses(t *testing.T) {
+	for _, tc := range []struct {
+		class elf.Class
+		value uint64
+		want  int64
+	}{
+		{elf.ELFCLASS32, 0xfffff000, -4096},
+		{elf.ELFCLASS64, 0xfffffffffffff000, -4096},
+		{elf.ELFCLASS32, 0x100, 256},
+		{elf.ELFCLASS64, 0x100, 256},
+	} {
+		if got := symbolOffset(tc.class, tc.value); got != tc.want {
+			t.Errorf("symbolOffset(%v, %#x) = %d, want %d", tc.class, tc.value, got, tc.want)
+		}
+	}
+}
+
 func TestVDSOSymbolFieldsTracksKernelStruct(t *testing.T) {
 	fields, err := vdsoSymbolFields([]byte(`
 struct vdso_image {

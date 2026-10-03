@@ -3831,6 +3831,37 @@ func TestX86VDSOSourcesMatchConfiguredFeatures(t *testing.T) {
 	}
 }
 
+func TestX86CompatVDSOSourceClosure(t *testing.T) {
+	tree := mustParseString(t, "mainmenu \"x86 compat vDSO\"\n")
+	sourceRoot := t.TempDir()
+	object := "arch/x86/entry/vdso/vdso-image-32.o"
+	for _, input := range compactSpecialSourcesForObject(object, nil).inputs {
+		mustWriteSource(t, sourceRoot, input.path, "\n")
+	}
+	entry := "arch/x86/entry/vdso/vdso32/vclock_gettime.c"
+	mustWriteSource(t, sourceRoot, entry, "#ifdef __i386__\n#include \"compat.h\"\n#endif\n")
+	header := "arch/x86/entry/vdso/vdso32/compat.h"
+	mustWriteSource(t, sourceRoot, header, "int compat_v1;\n")
+	writeCompactContentGraphForcedInputs(t, sourceRoot)
+	kb, err := ParseKbuild(strings.NewReader("obj-y := "+object+"\n"), "Kbuild")
+	if err != nil {
+		t.Fatal(err)
+	}
+	generate := func() CompactObjectVariant {
+		t.Helper()
+		metadata, err := compactMetadataBatchWithOptionsForTest(t, tree, kb, []NamedConfig{{Name: "base"}}, CompactMetadataOptions{SourceRoot: sourceRoot, Srcarch: "x86"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return variantByTarget(metadata, objectTarget(metadata, configByName(metadata, "base"), object))
+	}
+	before := generate()
+	mustWriteSource(t, sourceRoot, header, "int compat_v2;\n")
+	if after := generate(); after.ContentID == before.ContentID {
+		t.Fatal("32-bit-only vDSO header did not affect content ID")
+	}
+}
+
 func TestCompactMappedGeneratedSourcesUseOutputLanguageFlags(t *testing.T) {
 	for _, tc := range []struct {
 		object    string

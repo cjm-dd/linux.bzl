@@ -160,10 +160,17 @@ func vdsoSymbols(file *elf.File) (map[string]int64, error) {
 	out := map[string]int64{}
 	for _, sym := range raw {
 		if wanted[sym.Name] && sym.Value != 0 {
-			out[sym.Name] = int64(sym.Value)
+			out[sym.Name] = symbolOffset(file.Class, sym.Value)
 		}
 	}
 	return out, nil
+}
+
+func symbolOffset(class elf.Class, value uint64) int64 {
+	if class == elf.ELFCLASS32 {
+		return int64(int32(value))
+	}
+	return int64(value)
 }
 
 var vdsoSymbolFieldPattern = regexp.MustCompile(`\bsym_([A-Za-z0-9_]+)\s*;`)

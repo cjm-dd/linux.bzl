@@ -1641,6 +1641,11 @@ func (memo compactVariantMemo) variantForStack(
 		if object.mode == "m" {
 			profile = sourceScanKernelModule
 		}
+		for _, input := range specialSources.inputs {
+			if input.path == source && input.profile != sourceScanKernel {
+				profile = input.profile
+			}
+		}
 		closure, err := scanner.closureForSourceConfigInputsSearchProfile(
 			source,
 			actionIncludeSearch,
@@ -2213,6 +2218,23 @@ func compactSpecialSourcesForObject(object string, config *ResolvedConfig) compa
 		})
 		return compactSpecialSourceInputs{
 			primary:      "arch/x86/entry/vdso/vdso-note.S",
+			includeRoots: []string{"arch/x86/entry/vdso"},
+			inputs:       inputs,
+		}
+	case "arch/x86/entry/vdso/vdso-image-32.o":
+		inputs := compiled(
+			"arch/x86/entry/vdso/vdso32/note.S",
+			"arch/x86/entry/vdso/vdso32/system_call.S",
+			"arch/x86/entry/vdso/vdso32/sigreturn.S",
+			"arch/x86/entry/vdso/vdso32/vclock_gettime.c",
+			"arch/x86/entry/vdso/vdso32/vdso32.lds.S",
+		)
+		for i := range inputs {
+			inputs[i].profile = sourceScanX86CompatVDSO
+		}
+		inputs = append(inputs, compactSpecialSourceInput{path: "arch/x86/include/asm/vdso.h"})
+		return compactSpecialSourceInputs{
+			primary:      "arch/x86/entry/vdso/vdso32/note.S",
 			includeRoots: []string{"arch/x86/entry/vdso"},
 			inputs:       inputs,
 		}
@@ -2942,41 +2964,42 @@ func quotedInclude(line string) (string, bool) {
 
 var compactGroupedSpecialObjects = map[string]bool{
 	"arch/x86/crypto/poly1305-x86_64-cryptogams.o": true,
-	"arch/arm/vdso/vdso.o":                        true,
-	"arch/arm64/kernel/vdso-wrap.o":               true,
-	"arch/arm64/kernel/vdso32-wrap.o":             true,
-	"arch/riscv/kernel/vdso/vdso.o":               true,
-	"arch/riscv/kernel/compat_vdso/compat_vdso.o": true,
-	"arch/riscv/purgatory/kexec-purgatory.o":      true,
-	"arch/powerpc/purgatory/kexec-purgatory.o":    true,
-	"arch/powerpc/kernel/vdso64_wrapper.o":        true,
-	"arch/powerpc/kernel/vdso32_wrapper.o":        true,
-	"arch/x86/entry/vdso/vdso-image-64.o":         true,
-	"arch/x86/kernel/cpu/capflags.o":              true,
-	"arch/x86/lib/inat.o":                         true,
-	"arch/x86/purgatory/kexec-purgatory.o":        true,
-	"arch/x86/realmode/rmpiggy.o":                 true,
-	"certs/blacklist_hashes.o":                    true,
-	"certs/revocation_certificates.o":             true,
-	"certs/system_certificates.o":                 true,
-	"drivers/of/empty_root.dtb.o":                 true,
-	"drivers/scsi/scsi_sysfs.o":                   true,
-	"drivers/tty/vt/consolemap_deftbl.o":          true,
-	"drivers/tty/vt/ucs.o":                        true,
-	"lib/crc/crc32-main.o":                        true,
-	"lib/crc/crc64-main.o":                        true,
-	"lib/crc32.o":                                 true,
-	"lib/crc64.o":                                 true,
-	"lib/crypto/arm/poly1305-core.o":              true,
-	"lib/crypto/arm/sha256-core.o":                true,
-	"lib/crypto/arm/sha512-core.o":                true,
-	"lib/crypto/arm64/poly1305-core.o":            true,
-	"lib/crypto/arm64/sha256-core.o":              true,
-	"lib/crypto/arm64/sha512-core.o":              true,
-	"lib/crypto/riscv/poly1305-core.o":            true,
-	"lib/crypto/x86/poly1305-x86_64-cryptogams.o": true,
-	"lib/oid_registry.o":                          true,
-	"usr/initramfs_data.o":                        true,
+	"arch/arm/vdso/vdso.o":                         true,
+	"arch/arm64/kernel/vdso-wrap.o":                true,
+	"arch/arm64/kernel/vdso32-wrap.o":              true,
+	"arch/riscv/kernel/vdso/vdso.o":                true,
+	"arch/riscv/kernel/compat_vdso/compat_vdso.o":  true,
+	"arch/riscv/purgatory/kexec-purgatory.o":       true,
+	"arch/powerpc/purgatory/kexec-purgatory.o":     true,
+	"arch/powerpc/kernel/vdso64_wrapper.o":         true,
+	"arch/powerpc/kernel/vdso32_wrapper.o":         true,
+	"arch/x86/entry/vdso/vdso-image-64.o":          true,
+	"arch/x86/entry/vdso/vdso-image-32.o":          true,
+	"arch/x86/kernel/cpu/capflags.o":               true,
+	"arch/x86/lib/inat.o":                          true,
+	"arch/x86/purgatory/kexec-purgatory.o":         true,
+	"arch/x86/realmode/rmpiggy.o":                  true,
+	"certs/blacklist_hashes.o":                     true,
+	"certs/revocation_certificates.o":              true,
+	"certs/system_certificates.o":                  true,
+	"drivers/of/empty_root.dtb.o":                  true,
+	"drivers/scsi/scsi_sysfs.o":                    true,
+	"drivers/tty/vt/consolemap_deftbl.o":           true,
+	"drivers/tty/vt/ucs.o":                         true,
+	"lib/crc/crc32-main.o":                         true,
+	"lib/crc/crc64-main.o":                         true,
+	"lib/crc32.o":                                  true,
+	"lib/crc64.o":                                  true,
+	"lib/crypto/arm/poly1305-core.o":               true,
+	"lib/crypto/arm/sha256-core.o":                 true,
+	"lib/crypto/arm/sha512-core.o":                 true,
+	"lib/crypto/arm64/poly1305-core.o":             true,
+	"lib/crypto/arm64/sha256-core.o":               true,
+	"lib/crypto/arm64/sha512-core.o":               true,
+	"lib/crypto/riscv/poly1305-core.o":             true,
+	"lib/crypto/x86/poly1305-x86_64-cryptogams.o":  true,
+	"lib/oid_registry.o":                           true,
+	"usr/initramfs_data.o":                         true,
 }
 
 type compactActionGroupEmission struct {

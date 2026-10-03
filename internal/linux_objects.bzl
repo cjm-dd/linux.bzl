@@ -1854,24 +1854,26 @@ def _linux_realmode_outputs(ctx, compiler, linker, cc_toolchain, config, generat
     )
     return struct(bin = bin, relocs = relocs)
 
-def _linux_vdso_compile(ctx, compiler, cc_toolchain, feature_configuration, config, generated_headers, source_root, src, out_relpath):
+def _linux_vdso_compile(ctx, compiler, cc_toolchain, feature_configuration, config, generated_headers, source_root, src, out_relpath, bits):
     out = ctx.actions.declare_file(ctx.label.name + ".obj/" + out_relpath)
     assembly = _is_assembly_source(src)
     args = ctx.actions.args()
-    args.add_all(_linux_compile_flags(ctx, cc_toolchain, feature_configuration))
+    flags = _linux_compile_flags(ctx, cc_toolchain, feature_configuration)
+    if bits == "32":
+        flags = [flag for flag in flags if flag not in ["-m64", "-mcmodel=kernel", "-fno-pic", "-mfentry"]]
+    args.add_all(flags)
+    args.add_all(["-m32", "-msoft-float", "-mregparm=0", "-fpic"] if bits == "32" else ["-mcmodel=small", "-fPIC", "-m64"])
     args.add_all([
-        "-mcmodel=small",
-        "-fPIC",
         "-O2",
         "-fasynchronous-unwind-tables",
-        "-m64",
         "-fno-stack-protector",
         "-fno-omit-frame-pointer",
         "-foptimize-sibling-calls",
         "-DDISABLE_BRANCH_PROFILING",
-        "-DBUILD_VDSO",
         "-Wno-unused-command-line-argument",
     ])
+    if bits == "64" or assembly:
+        args.add("-DBUILD_VDSO")
     args.add_all(_linux_source_preinclude_flags_for_root(source_root, assembly))
     if config:
         _add_config_include_flag(args, config)
@@ -1899,9 +1901,10 @@ def _linux_vdso_compile(ctx, compiler, cc_toolchain, feature_configuration, conf
     )
     return out
 
-def _linux_vdso_linker_script(ctx, compiler, cc_toolchain, feature_configuration, config, generated_headers, source_root):
-    src = _source_tree_file(ctx, "arch/x86/entry/vdso/vdso.lds.S")
-    out = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/entry/vdso/vdso.lds")
+def _linux_vdso_linker_script(ctx, compiler, cc_toolchain, feature_configuration, config, generated_headers, source_root, bits):
+    script = "arch/x86/entry/vdso/" + ("vdso32/vdso32.lds" if bits == "32" else "vdso.lds")
+    src = _source_tree_file(ctx, script + ".S")
+    out = ctx.actions.declare_file(ctx.label.name + ".obj/" + script)
     args = ctx.actions.args()
     args.add_all(_linux_compile_flags(ctx, cc_toolchain, feature_configuration))
     args.add_all(_linux_config_cflags(config), format_each = "@%s")
@@ -1945,8 +1948,8 @@ def _linux_vdso_linker_script(ctx, compiler, cc_toolchain, feature_configuration
     )
     return out
 
-def _linux_vdso_link(ctx, linker, cc_toolchain, objects, linker_script):
-    out = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/entry/vdso/vdso64.so.dbg")
+def _linux_vdso_link(ctx, linker, cc_toolchain, objects, linker_script, bits):
+    out = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/entry/vdso/vdso" + bits + ".so.dbg")
     args = ctx.actions.args()
     args.add("-fuse-ld=lld")
     args.add("-nostdlib")
@@ -1957,8 +1960,9 @@ def _linux_vdso_link(ctx, linker, cc_toolchain, objects, linker_script):
     args.add("-Wl,--eh-frame-hdr")
     args.add("-Wl,-Bsymbolic")
     args.add("-Wl,-z,noexecstack")
-    args.add("-Wl,-m,elf_x86_64")
-    args.add("-Wl,-soname,linux-vdso.so.1")
+    args.add("-m" + bits)
+    args.add("-Wl,-m," + ("elf_i386" if bits == "32" else "elf_x86_64"))
+    args.add("-Wl,-soname," + ("linux-gate.so.1" if bits == "32" else "linux-vdso.so.1"))
     args.add("-Wl,-z,max-page-size=4096")
     args.add(linker_script, format = "-Wl,-T,%s")
     args.add("-o")
@@ -1976,6 +1980,7 @@ def _linux_vdso_link(ctx, linker, cc_toolchain, objects, linker_script):
     return out
 
 def _linux_vdso_image_source(ctx, compiler, linker, cc_toolchain, feature_configuration, config, generated_headers, source_root):
+    bits = "32" if ctx.attr.object.endswith("-32.o") else "64"
     source_specs = [
         ("arch/x86/entry/vdso/vdso-note.S", "arch/x86/entry/vdso/vdso-note.o"),
         ("arch/x86/entry/vdso/vclock_gettime.c", "arch/x86/entry/vdso/vclock_gettime.o"),
@@ -1989,6 +1994,13 @@ def _linux_vdso_image_source(ctx, compiler, linker, cc_toolchain, feature_config
             ("arch/x86/entry/vdso/vgetrandom.c", "arch/x86/entry/vdso/vgetrandom.o"),
             ("arch/x86/entry/vdso/vgetrandom-chacha.S", "arch/x86/entry/vdso/vgetrandom-chacha.o"),
         ])
+    if bits == "32":
+        source_specs = [
+            ("arch/x86/entry/vdso/vdso32/note.S", "arch/x86/entry/vdso/vdso32/note.o"),
+            ("arch/x86/entry/vdso/vdso32/system_call.S", "arch/x86/entry/vdso/vdso32/system_call.o"),
+            ("arch/x86/entry/vdso/vdso32/sigreturn.S", "arch/x86/entry/vdso/vdso32/sigreturn.o"),
+            ("arch/x86/entry/vdso/vdso32/vclock_gettime.c", "arch/x86/entry/vdso/vdso32/vclock_gettime.o"),
+        ]
     objects = []
     for src_relpath, out_relpath in source_specs:
         objects.append(_linux_vdso_compile(
@@ -2001,11 +2013,12 @@ def _linux_vdso_image_source(ctx, compiler, linker, cc_toolchain, feature_config
             source_root,
             _source_tree_file(ctx, src_relpath),
             out_relpath,
+            bits,
         ))
-    linker_script = _linux_vdso_linker_script(ctx, compiler, cc_toolchain, feature_configuration, config, generated_headers, source_root)
-    dbg = _linux_vdso_link(ctx, linker, cc_toolchain, objects, linker_script)
+    linker_script = _linux_vdso_linker_script(ctx, compiler, cc_toolchain, feature_configuration, config, generated_headers, source_root, bits)
+    dbg = _linux_vdso_link(ctx, linker, cc_toolchain, objects, linker_script, bits)
 
-    stripped = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/entry/vdso/vdso64.so")
+    stripped = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/entry/vdso/vdso" + bits + ".so")
     objcopy_args = ctx.actions.args()
     objcopy_args.add("-S")
     objcopy_args.add("--remove-section")
@@ -2022,7 +2035,7 @@ def _linux_vdso_image_source(ctx, compiler, linker, cc_toolchain, feature_config
         progress_message = "Stripping Linux x86 vDSO %{label}",
     )
 
-    out = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/entry/vdso/vdso-image-64.c")
+    out = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/entry/vdso/vdso-image-" + bits + ".c")
     vdso2c_args = ctx.actions.args()
     vdso2c_args.add("-raw", dbg)
     vdso2c_args.add("-stripped", stripped)
@@ -6245,7 +6258,7 @@ def _linux_object_impl(ctx):
         )
         src = generated
         generated_sources.append(generated)
-    if ctx.attr.object == "arch/x86/entry/vdso/vdso-image-64.o":
+    if ctx.attr.object in ["arch/x86/entry/vdso/vdso-image-64.o", "arch/x86/entry/vdso/vdso-image-32.o"]:
         generated = _linux_vdso_image_source(
             ctx,
             compiler,
