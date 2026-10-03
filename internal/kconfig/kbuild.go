@@ -2319,7 +2319,7 @@ func (p *kbuildTreeParser) parseIncludes(parser *kbuildParser, includes []Kbuild
 			if include.Optional && os.IsNotExist(err) {
 				continue
 			}
-			return err
+			return fmt.Errorf("%s: include %q: %w", include.Position, include.Path, err)
 		}
 	}
 	return nil
