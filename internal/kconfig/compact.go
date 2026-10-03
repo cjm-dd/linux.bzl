@@ -132,6 +132,8 @@ type CompactBuildFileOptions struct {
 }
 
 type CompactMetadataOptions struct {
+	// BuiltinsOnly omits in-tree loadable modules without changing Kconfig.
+	BuiltinsOnly          bool
 	ObjectDir             string
 	SourceRoot            string
 	SourceRoots           map[string]string
@@ -288,6 +290,9 @@ func (t *Tree) CompactMetadataBatchWithOptions(
 		objects := kb.resolvedObjects(resolved)
 		resolvedVariants := compactVariantMemo{}
 		for _, object := range objects.all() {
+			if opts.BuiltinsOnly && object.mode == "m" {
+				continue
+			}
 			if rustSDKOwnsObject(object.object) {
 				continue
 			}
@@ -344,6 +349,9 @@ func (t *Tree) CompactMetadataBatchWithOptions(
 		moduleTargets := make([]string, 0, len(objects.roots))
 		appendRootTargets := func(roots []resolvedKbuildObject) error {
 			for _, object := range roots {
+				if opts.BuiltinsOnly && object.mode == "m" {
+					continue
+				}
 				if rustSDKOwnsObject(object.object) {
 					continue
 				}

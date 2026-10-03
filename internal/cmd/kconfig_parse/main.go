@@ -291,6 +291,7 @@ func run() (exitCode int) {
 		compileEnvironmentABI    = flag.String("compile_environment_abi", "", "Toolchain/action ABI bound into compile environment content IDs")
 		rustProfileOut           = flag.String("rust_profile_out", "", "Path to write the source-derived Rust profile JSON")
 		compactKbuildTree        = flag.Bool("compact_kbuild_tree", false, "Follow active Kbuild directory descent when generating compact metadata")
+		compactBuiltinsOnly      = flag.Bool("compact_builtins_only", false, "Omit in-tree loadable modules without changing Kconfig")
 		resolveConfig            = flag.String("resolve_config", "", "Named .config input in NAME=PATH form to resolve through Kconfig defaults and dependencies")
 		configMode               = flag.String("config_mode", "default", "Config resolver mode. Supported: default, allnoconfig")
 		resolvedConfigOut        = flag.String("resolved_config_out", "", "Path to write the resolved .config")
@@ -570,6 +571,7 @@ func run() (exitCode int) {
 			compactConfigInputs,
 			*configMode,
 			*compactKbuildTree,
+			*compactBuiltinsOnly,
 			vars,
 			namedPathMap(sourceRootMaps),
 			headerLabels,
@@ -969,6 +971,7 @@ func compactMetadata(
 	configInputs []namedPath,
 	configMode string,
 	compactKbuildTree bool,
+	builtinsOnly bool,
 	vars map[string]string,
 	sourceRoots map[string]string,
 	generatedHeadersByConfig map[string]string,
@@ -1033,6 +1036,7 @@ func compactMetadata(
 		}
 	}
 	opts := kconfig.CompactMetadataOptions{
+		BuiltinsOnly:          builtinsOnly,
 		ObjectDir:             objectDir,
 		SourceRoot:            sourceRoot,
 		SourceRoots:           sourceRoots,

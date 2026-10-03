@@ -557,6 +557,10 @@ def _linux_image_impl(rctx):
 linux_image = repository_rule(
     implementation = _linux_image_impl,
     attrs = {
+        "build_in_tree_modules": attr.bool(
+            default = True,
+            doc = "Build in-tree loadable modules; disabling preserves Kconfig but limits Module.symvers to built-in exports.",
+        ),
         "config": attr.label(
             allow_single_file = True,
             mandatory = True,
@@ -982,6 +986,8 @@ def _generate_content_graph(
         "//:__subpackages__",
     ]
     args.extend(_graph_arch_tool_args(arch))
+    if not rctx.attr.build_in_tree_modules:
+        args.append("-compact_builtins_only")
     args.extend(_graph_configs_args({
         name: rctx.path(config_paths[name])
         for name in config_paths.keys()

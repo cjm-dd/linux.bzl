@@ -129,6 +129,7 @@ surface:
 | `source` | Root `Kconfig` from `linux_source_repository` |
 | `config` | Base Kconfig fragment |
 | `config_mode` | Kconfig baseline: `default` or `allnoconfig` |
+| `build_in_tree_modules` | Build configured in-tree loadable modules (default `True`); `False` preserves Kconfig but limits `Module.symvers` to built-in exports |
 | `platform` | Linux x86_64, aarch64, or armv7 target platform selecting Clang |
 
 `linux_images.overlay` adds a named config fragment to an image:
@@ -295,6 +296,11 @@ kernel and module metadata without analyzing the compressed boot image;
 supported for x86_64, aarch64, and armv7 kernels. As with
 Rust modules, the `kernel` provider fixes the target platform and rejects
 cross-kernel dependencies.
+
+Set `build_in_tree_modules = False` on the image when only the kernel and
+external modules using built-in exports are needed. This does not disable
+`CONFIG_MODULES` or change the ABI configuration. In-tree `.ko` outputs and
+their exports are omitted; `modpost` still rejects unresolved module imports.
 
 When the configured kernel enables `CONFIG_MODVERSIONS`, linux.bzl generates
 GENKSYMS CRCs for C and assembly exports and carries them through in-tree and

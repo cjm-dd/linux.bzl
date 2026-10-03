@@ -46,6 +46,54 @@ ccflags-$(CONFIG_NET) += -DCONFIG_NET_SEEN
 CFLAGS_net/core.o += -DNET_CORE
 `
 
+func TestCompactBuiltinsOnlyPreservesModuleConfiguration(t *testing.T) {
+	tree := mustParseCompactFixture(t)
+	kb, err := ParseKbuild(strings.NewReader(`
+obj-y += init.o
+obj-$(CONFIG_NET) += network.o
+network-y := member.o
+`), "Kbuild")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceRoot := t.TempDir()
+	mustWriteSource(t, sourceRoot, "init.c", "int builtin;\n")
+	// This deliberately cannot be scanned: omitting module output must avoid
+	// evaluating its source closure, not merely remove it from the final link.
+	mustWriteSource(t, sourceRoot, "member.c", "#include \"unmodeled-module-header.h\"\n")
+	configs := []NamedConfig{{Name: "base", Flags: map[string]string{
+		"CONFIG_MODULES": "y", "CONFIG_NET": "m",
+	}}}
+	opts := CompactMetadataOptions{SourceRoot: sourceRoot}
+	if _, err := compactMetadataBatchWithOptionsForTest(t, tree, kb, configs, opts); err == nil {
+		t.Fatal("default module graph unexpectedly accepted the missing module header")
+	}
+	opts.BuiltinsOnly = true
+	metadata, err := compactMetadataBatchWithOptionsForTest(t, tree, kb, configs, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(metadata.ObjectVariants) != 1 || metadata.ObjectVariants[0].Object != "init.o" {
+		t.Fatalf("built-in graph contains module objects: %#v", metadata.ObjectVariants)
+	}
+	config := configByName(metadata, "base")
+	if len(config.ModuleObjectTargets) != 0 {
+		t.Fatalf("module targets = %v, want none", config.ModuleObjectTargets)
+	}
+	for _, payload := range metadata.ConfigPayloads {
+		if payload.ID != config.ConfigPayload {
+			continue
+		}
+		for _, line := range []string{"CONFIG_MODULES=y\n", "CONFIG_NET=m\n"} {
+			if !strings.Contains(payload.Content, line) {
+				t.Fatalf("module configuration changed: %s", payload.Content)
+			}
+		}
+		return
+	}
+	t.Fatal("full configuration payload missing")
+}
+
 func TestCompactMetadataSharesUnrelatedObjectVariants(t *testing.T) {
 	tree := mustParseCompactFixture(t)
 	kb := mustParseKbuildFixture(t)

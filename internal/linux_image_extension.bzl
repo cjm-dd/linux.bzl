@@ -208,6 +208,7 @@ def _linux_images_impl(module_ctx):
             graph_repos[profile.name] = graph_repo
             _linux_image_repository(
                 name = graph_repo,
+                build_in_tree_modules = image.build_in_tree_modules,
                 config = image.config,
                 config_mode = image.config_mode,
                 overlays = image_overlays,
@@ -227,6 +228,7 @@ def _linux_images_impl(module_ctx):
         )
 
 _image = tag_class(attrs = {
+    "build_in_tree_modules": attr.bool(default = True),
     "config": attr.label(mandatory = True),
     "config_mode": attr.string(default = "default", values = ["allnoconfig", "default"]),
     "name": attr.string(mandatory = True),
