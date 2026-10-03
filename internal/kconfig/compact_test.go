@@ -1277,6 +1277,62 @@ func TestCompactMetadataUsesRootMakefileDirectories(t *testing.T) {
 	}
 }
 
+func TestCompactMetadataUsesExportedRootLinkOrder(t *testing.T) {
+	tree := mustParseCompactFixture(t)
+	dir := t.TempDir()
+	for name, content := range map[string]string{
+		"Kbuild": "# Older kernels only generate headers here.\n",
+		"Makefile": `drivers-y := drivers/
+libs-y := lib/
+core-y := core/
+export KBUILD_VMLINUX_OBJS := head.o $(core-y) $(libs-y) $(drivers-y)
+export KBUILD_VMLINUX_LIBS := lib/lib.a
+`,
+		"core/Makefile":    "obj-y := start.o\n",
+		"lib/Makefile":     "obj-y := always.o\nlib-y := helper.o\nccflags-y := -DLIB_FLAG\n",
+		"drivers/Makefile": "obj-y := driver.o\n",
+	} {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	opts := KbuildOptions{
+		RootDir:             dir,
+		RootMakefiles:       []string{"Makefile"},
+		RootObjectVariables: []string{"KBUILD_VMLINUX_OBJS", "KBUILD_VMLINUX_LIBS"},
+	}
+	kb, err := ParseKbuildDirectoryTree(filepath.Join(dir, "Kbuild"), opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, err := compactMetadataBatchForTest(t, tree, kb, []NamedConfig{{Name: "base"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := configByName(metadata, "base")
+	want := []string{"head.o", "core/start.o", "lib/always.o", "drivers/driver.o", "lib/helper.o"}
+	if got := objectNames(metadata, base.ObjectTargets); strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("ObjectTargets = %v, want %v", got, want)
+	}
+	variant := variantByTarget(metadata, objectTarget(metadata, base, "lib/always.o"))
+	if got := strings.Count(strings.Join(variant.Flags, " "), "-DLIB_FLAG"); got != 1 {
+		t.Fatalf("library directory flags applied %d times: %v", got, variant.Flags)
+	}
+
+	for _, value := range []string{"", "export KBUILD_VMLINUX_OBJS := $(unknown root)\n"} {
+		if err := os.WriteFile(filepath.Join(dir, "Makefile"), []byte(value), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ParseKbuildDirectoryTree(filepath.Join(dir, "Kbuild"), opts); err == nil || !strings.Contains(err.Error(), "root object variable KBUILD_VMLINUX_OBJS") {
+			t.Fatalf("missing/unresolved root inputs: got %v", err)
+		}
+	}
+}
+
 func TestCompactBuildFilesParse(t *testing.T) {
 	tree := mustParseCompactFixture(t)
 	kb := mustParseKbuildFixture(t)

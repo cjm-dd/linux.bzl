@@ -10,6 +10,26 @@ import (
 	"github.com/hermeticbuild/linux.bzl/internal/rusttoolchain"
 )
 
+func TestLegacyKernelRoots(t *testing.T) {
+	for version, want := range map[string]bool{
+		"5.15.206": true,
+		"6.0":      true,
+		"6.1":      false,
+		"6.18.2":   false,
+		"7.0":      false,
+	} {
+		got, err := legacyKernelRoots(version)
+		if err != nil || got != want {
+			t.Errorf("legacyKernelRoots(%q) = %v, %v; want %v, nil", version, got, err, want)
+		}
+	}
+	for _, version := range []string{"", "5", "x.15", "5.x"} {
+		if _, err := legacyKernelRoots(version); err == nil {
+			t.Errorf("legacyKernelRoots(%q) succeeded", version)
+		}
+	}
+}
+
 func TestApplyRustToolchainProbe(t *testing.T) {
 	vars := stringMapFlag{"RUSTC_VERSION_TEXT": "repository baseline"}
 	rustcVersion, rustcLLVMVersion := applyRustToolchainProbe(vars, rusttoolchain.Probe{

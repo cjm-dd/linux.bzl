@@ -1072,7 +1072,23 @@ func compactMetadata(
 		var parseErr error
 		if compactKbuildTree {
 			kbuildOpts.RootDir = rootDir
-			kbuildOpts.RootMakefiles = linuxRootMakefiles(rootDir, vars)
+			legacyRoots, err := legacyKernelRoots(kernelVersion)
+			if err != nil {
+				return kconfig.CompactConfigGraph{}, err
+			}
+			if legacyRoots {
+				kbuildOpts.RootMakefiles = []string{"Makefile"}
+				kbuildOpts.RootObjectVariables = []string{"KBUILD_VMLINUX_OBJS", "KBUILD_VMLINUX_LIBS"}
+				kbuildOpts.RelativeSourcePaths = true
+				kbuildOpts.Variables["sub_make_done"] = "1"
+				kbuildOpts.Variables["abs_srctree"] = rootDir
+				kbuildOpts.Variables["abs_objtree"] = rootDir
+				// CONFIG values are already resolved; avoid Makefile's generated config includes.
+				kbuildOpts.Variables["MAKECMDGOALS"] = "help"
+				kbuildOpts.Variables["LLVM"] = "1"
+			} else {
+				kbuildOpts.RootMakefiles = linuxRootMakefiles(rootDir, vars)
+			}
 			kb, parseErr = kconfig.ParseKbuildDirectoryTree(workspacePath(kbuildPath), kbuildOpts)
 		} else {
 			kb, parseErr = kconfig.ParseKbuildFileWithOptions(workspacePath(kbuildPath), kbuildOpts)
@@ -1102,6 +1118,22 @@ func kbuildLibraryDirs(vars map[string]string) []string {
 		out = append(out, dir)
 	}
 	return out
+}
+
+func legacyKernelRoots(version string) (bool, error) {
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return false, fmt.Errorf("invalid Linux version %q", version)
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false, err
+	}
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false, err
+	}
+	return major < 6 || (major == 6 && minor < 1), nil
 }
 
 func linuxRootMakefiles(rootDir string, vars map[string]string) []string {

@@ -148,11 +148,14 @@ type KbuildCondition struct {
 }
 
 type KbuildOptions struct {
-	RootDir         string
-	RootMakefiles   []string
-	SourceRoots     map[string]string
-	Variables       map[string]string
-	MaxIncludeDepth int
+	RootDir       string
+	RootMakefiles []string
+	// RootObjectVariables selects ordered exported link inputs instead of the
+	// intermediate directory collections in supplemental root Makefiles.
+	RootObjectVariables []string
+	SourceRoots         map[string]string
+	Variables           map[string]string
+	MaxIncludeDepth     int
 	// RelativeSourcePaths matches older Kbuild, where src is relative to srctree.
 	RelativeSourcePaths bool
 	// ConfigVariablesComplete declares Variables to be the complete resolved
@@ -2579,6 +2582,28 @@ func (p *kbuildDirectoryTreeParser) parseRootMakefile(path string) (*KbuildFile,
 	}, variableOverrides)
 	if err != nil {
 		return nil, err
+	}
+	if len(p.opts.RootObjectVariables) != 0 {
+		roots := newKbuildParser(p.inheritedVariables, p.rootDir)
+		for _, name := range p.opts.RootObjectVariables {
+			value, ok := parsed.exportedVariables[name]
+			if !ok || containsMakeReference(value) {
+				return nil, fmt.Errorf("%s: missing or unresolved root object variable %s: %q", path, name, value)
+			}
+			if err := roots.parseCollectionAssignment("obj", KbuildCondition{Kind: "const", State: "y"}, "+=", strings.Fields(value), Position{Filename: path}); err != nil {
+				return nil, err
+			}
+		}
+		parsed.Objects = roots.kb.Objects
+		parsed.objectAssigns = roots.kb.objectAssigns
+		parsed.Directories = nil
+		seen := map[string]bool{}
+		for _, dir := range roots.kb.Directories {
+			if !seen[dir.Directory] {
+				parsed.Directories = append(parsed.Directories, dir)
+				seen[dir.Directory] = true
+			}
+		}
 	}
 	p.rootCache[abs] = parsed
 	return parsed, nil
