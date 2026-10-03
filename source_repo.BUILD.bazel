@@ -104,6 +104,7 @@ filegroup(
         "scripts/integer-wrap-ignore.scl",
         "scripts/mod/**",
         "scripts/module-common.c",
+        "scripts/sorttable.c",
         "scripts/module.lds.S",
         "scripts/dtc/libfdt/**",
         "usr/default_cpio_list",

@@ -7675,16 +7675,20 @@ def _linux_sorttable(ctx, cc_toolchain, config, input):
     args = ctx.actions.args()
     args.add("-config", config.config)
     args.add("-nm", llvm_nm)
+    inputs = [input, config.config]
     if ctx.executable.sorttable_tool:
         args.add("-sorttable")
         args.add(ctx.executable.sorttable_tool)
+        source = _source_tree_file(ctx, "scripts/sorttable.c")
+        args.add("-sorttable-source", source)
+        inputs.append(source)
     args.add("-in", input)
     args.add("-nm_out", nm_out)
     args.add("-out", out)
     path_mapped_run(
         ctx.actions,
         executable = ctx.attr._sorttablerun[DefaultInfo].files_to_run,
-        inputs = [input, config.config],
+        inputs = inputs,
         tools = tools,
         outputs = [out, nm_out],
         arguments = [args],
