@@ -4,7 +4,9 @@ package kconfig
 // //internal/cmd/objtoolrun. These values are action inputs for every x86
 // source-backed object whose Kbuild metadata enables objtool.
 var objtoolConfigSymbols = []string{
+	"CONFIG_CPU_UNRET_ENTRY",
 	"CONFIG_FINEIBT",
+	"CONFIG_FRAME_POINTER",
 	"CONFIG_FTRACE_MCOUNT_USE_OBJTOOL",
 	"CONFIG_FUNCTION_PADDING_BYTES",
 	"CONFIG_GCOV_KERNEL",
@@ -25,9 +27,14 @@ var objtoolConfigSymbols = []string{
 	"CONFIG_OBJTOOL",
 	"CONFIG_OBJTOOL_WERROR",
 	"CONFIG_PREFIX_SYMBOLS",
+	"CONFIG_RETHUNK",
+	"CONFIG_RETPOLINE",
+	"CONFIG_SLS",
 	"CONFIG_STACK_VALIDATION",
 	"CONFIG_UNWINDER_ORC",
+	"CONFIG_VMLINUX_VALIDATION",
 	"CONFIG_X86_KERNEL_IBT",
+	"CONFIG_X86_SMAP",
 }
 
 // ObjtoolConfigSymbols returns a copy of the objtool action footprint.

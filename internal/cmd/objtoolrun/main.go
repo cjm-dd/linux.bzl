@@ -118,6 +118,9 @@ func readConfig(path string) (map[string]string, error) {
 
 func objtoolArgs(config map[string]string, mode string, force bool, extraArgs []string) ([]string, bool, error) {
 	if !enabled(config, "CONFIG_OBJTOOL") {
+		if enabled(config, "CONFIG_STACK_VALIDATION") {
+			return legacyObjtoolArgs(config, mode, force, extraArgs)
+		}
 		return nil, false, nil
 	}
 
@@ -184,6 +187,68 @@ func objtoolArgs(config map[string]string, mode string, force bool, extraArgs []
 	default:
 		return nil, false, fmt.Errorf("unsupported -mode %q", mode)
 	}
+}
+
+// Kernels predating CONFIG_OBJTOOL use check/orc subcommands and enable the
+// tool through STACK_VALIDATION. Match Makefile.build and link-vmlinux.sh.
+func legacyObjtoolArgs(config map[string]string, mode string, force bool, extraArgs []string) ([]string, bool, error) {
+	lto := enabled(config, "CONFIG_LTO_CLANG")
+	switch mode {
+	case "builtin", "module-member":
+		if lto && !force {
+			return nil, false, nil
+		}
+	case "builtin-always", "module", "module-single":
+	case "vmlinux":
+		if !lto && !enabled(config, "CONFIG_VMLINUX_VALIDATION") {
+			return nil, false, nil
+		}
+	default:
+		return nil, false, fmt.Errorf("unsupported -mode %q", mode)
+	}
+	args := []string{"check"}
+	if enabled(config, "CONFIG_UNWINDER_ORC") && (mode != "vmlinux" || lto) {
+		args = []string{"orc", "generate"}
+	}
+	if mode == "vmlinux" {
+		if lto {
+			args = append(args, "--duplicate")
+			if enabled(config, "CONFIG_FTRACE_MCOUNT_USE_OBJTOOL") {
+				args = append(args, "--mcount")
+			}
+		}
+		if enabled(config, "CONFIG_VMLINUX_VALIDATION") {
+			args = append(args, "--noinstr")
+			if enabled(config, "CONFIG_CPU_UNRET_ENTRY") {
+				args = append(args, "--unret")
+			}
+		}
+		args = append(args, "--vmlinux")
+	} else if strings.HasPrefix(mode, "module") {
+		args = append(args, "--module")
+	}
+	if !enabled(config, "CONFIG_FRAME_POINTER") {
+		args = append(args, "--no-fp")
+	}
+	if enabled(config, "CONFIG_GCOV_KERNEL") || lto {
+		args = append(args, "--no-unreachable")
+	}
+	if enabled(config, "CONFIG_RETPOLINE") {
+		args = append(args, "--retpoline")
+	}
+	if mode != "vmlinux" && enabled(config, "CONFIG_RETHUNK") {
+		args = append(args, "--rethunk")
+	}
+	if enabled(config, "CONFIG_X86_SMAP") {
+		args = append(args, "--uaccess")
+	}
+	if mode != "vmlinux" && enabled(config, "CONFIG_FTRACE_MCOUNT_USE_OBJTOOL") {
+		args = append(args, "--mcount")
+	}
+	if enabled(config, "CONFIG_SLS") {
+		args = append(args, "--sls")
+	}
+	return append(args, extraArgs...), true, nil
 }
 
 func commonObjtoolArgs(config map[string]string) []string {

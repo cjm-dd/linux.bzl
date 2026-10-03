@@ -39,6 +39,33 @@ func TestObjtoolArgsDisabled(t *testing.T) {
 	}
 }
 
+func TestLegacyObjtoolArgs(t *testing.T) {
+	for _, tc := range []struct {
+		name, mode, symbols, want string
+	}{
+		{"builtin", "builtin", "CONFIG_FRAME_POINTER CONFIG_RETPOLINE CONFIG_RETHUNK CONFIG_X86_SMAP CONFIG_FTRACE_MCOUNT_USE_OBJTOOL CONFIG_SLS", "check --retpoline --rethunk --uaccess --mcount --sls"},
+		{"orc_module", "module", "CONFIG_UNWINDER_ORC CONFIG_GCOV_KERNEL", "orc generate --module --no-fp --no-unreachable"},
+		{"module_member", "module-member", "CONFIG_FRAME_POINTER", "check --module"},
+		{"module_single", "module-single", "CONFIG_FRAME_POINTER", "check --module"},
+		{"delayed_builtin", "builtin", "CONFIG_LTO_CLANG", ""},
+		{"delayed_member", "module-member", "CONFIG_LTO_CLANG", ""},
+		{"vmlinux_disabled", "vmlinux", "CONFIG_UNWINDER_ORC", ""},
+		{"vmlinux_validation", "vmlinux", "CONFIG_VMLINUX_VALIDATION CONFIG_CPU_UNRET_ENTRY CONFIG_FRAME_POINTER CONFIG_RETPOLINE CONFIG_X86_SMAP CONFIG_SLS", "check --noinstr --unret --vmlinux --retpoline --uaccess --sls"},
+		{"vmlinux_lto", "vmlinux", "CONFIG_LTO_CLANG CONFIG_UNWINDER_ORC CONFIG_FTRACE_MCOUNT_USE_OBJTOOL", "orc generate --duplicate --mcount --vmlinux --no-fp --no-unreachable"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config := map[string]string{"CONFIG_STACK_VALIDATION": "y"}
+			for _, symbol := range strings.Fields(tc.symbols) {
+				config[symbol] = "y"
+			}
+			args, run, err := objtoolArgs(config, tc.mode, false, nil)
+			if err != nil || run != (tc.want != "") || strings.Join(args, " ") != tc.want {
+				t.Fatalf("objtoolArgs() = (%q, %t, %v), want %q", args, run, err, tc.want)
+			}
+		})
+	}
+}
+
 func TestObjtoolArgsBuiltin(t *testing.T) {
 	config := commonArgsConfig()
 	args, run, err := objtoolArgs(config, "builtin", false, nil)

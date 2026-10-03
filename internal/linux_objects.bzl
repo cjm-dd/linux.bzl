@@ -7490,7 +7490,7 @@ def _linux_vmlinux_compile_source(
     process_with_objtool = (
         objtool_mode != "" and
         ctx.executable.objtool and
-        config.config_flags.get("CONFIG_OBJTOOL") == "y" and
+        (config.config_flags.get("CONFIG_OBJTOOL") == "y" or config.config_flags.get("CONFIG_STACK_VALIDATION") == "y") and
         (objtool_mode == "builtin-always" or not delay_objtool)
     )
     out = ctx.actions.declare_file(ctx.label.name + ".obj/" + out_relpath)
