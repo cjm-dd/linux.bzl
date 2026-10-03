@@ -1471,6 +1471,9 @@ func (p *kbuildParser) kbuildKnownCall(name string, args []string, original, src
 	}
 	switch name {
 	case "cc-disable-warning":
+		if len(args) == 2 && strings.TrimSpace(args[1]) == "" {
+			args = args[:1]
+		}
 		if len(args) != 1 {
 			return "", true, fmt.Errorf(
 				"%s: Clang capability call %q requires exactly one argument",

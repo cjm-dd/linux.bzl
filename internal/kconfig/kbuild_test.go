@@ -392,6 +392,24 @@ CFLAGS_core.o := $(call cc-option,-Wa$(comma)-mrelax-relocations=no) \
 	}
 }
 
+func TestKbuildDisableWarningAcceptsTrailingEmptyArgument(t *testing.T) {
+	kb, err := parseKbuildWithOptions(strings.NewReader("CFLAGS_core.o := $(call cc-disable-warning,frame-address,)\n"), "Kbuild", KbuildOptions{
+		Variables: map[string]string{"SRCARCH": "x86"},
+		ProbeOption: func(kind string, candidate, context []string) (bool, error) {
+			if kind != "cc_option" || !reflect.DeepEqual(candidate, []string{"-Wno-frame-address"}) {
+				t.Fatalf("unexpected capability probe %q %q", kind, candidate)
+			}
+			return true, nil
+		},
+	}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kb.Flags) != 1 || !reflect.DeepEqual(kb.Flags[0].Flags, []string{"-Wno-frame-address"}) {
+		t.Fatalf("flags = %#v", kb.Flags)
+	}
+}
+
 func TestKbuildClangCapabilityPolicyResolvesLinux618SharedTreeOptions(t *testing.T) {
 	dir := t.TempDir()
 	kbuild := filepath.Join(dir, "Makefile")
