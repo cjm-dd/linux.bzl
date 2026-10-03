@@ -7707,11 +7707,18 @@ def _linux_kallsyms_object(ctx, compiler, cc_toolchain, feature_configuration, c
         kallsyms_flags.append("--all-symbols")
     if ctx.attr.kallsyms_pc_relative:
         kallsyms_flags.append("--pc-relative")
+    if not _linux_version_at_least(ctx.attr.version, 6, 11) and config.config_flags.get("CONFIG_KALLSYMS_BASE_RELATIVE") == "y":
+        kallsyms_flags.append("--base-relative")
+    if config.config_flags.get("CONFIG_KALLSYMS_ABSOLUTE_PERCPU") == "y":
+        kallsyms_flags.append("--absolute-percpu")
     kallsyms_args = ctx.actions.args()
+    if not _linux_version_at_least(ctx.attr.version, 6, 1):
+        kallsyms_args.add("-stdin", system_map)
     kallsyms_args.add(asm)
     kallsyms_args.add(kallsyms_tool)
     kallsyms_args.add_all(kallsyms_flags)
-    kallsyms_args.add(system_map)
+    if _linux_version_at_least(ctx.attr.version, 6, 1):
+        kallsyms_args.add(system_map)
     path_mapped_run(
         ctx.actions,
         executable = ctx.attr._runandwrite[DefaultInfo].files_to_run,
@@ -8208,9 +8215,10 @@ def _linux_vmlinux_impl(ctx):
     if kallsyms_enabled:
         if not ctx.executable.kallsyms_tool:
             fail("linux_vmlinux %s has kallsyms enabled and requires kallsyms_tool" % ctx.label)
-        empty_map = ctx.actions.declare_file(ctx.label.name + ".obj/.tmp_vmlinux0.syms")
-        ctx.actions.write(empty_map, "")
-        kallsyms_object = _linux_kallsyms_object(ctx, compiler, cc_toolchain, feature_configuration, config, generated_headers, source_root, empty_map, ".tmp_vmlinux0", ctx.executable.kallsyms_tool)
+        if _linux_version_at_least(ctx.attr.version, 6, 11):
+            empty_map = ctx.actions.declare_file(ctx.label.name + ".obj/.tmp_vmlinux0.syms")
+            ctx.actions.write(empty_map, "")
+            kallsyms_object = _linux_kallsyms_object(ctx, compiler, cc_toolchain, feature_configuration, config, generated_headers, source_root, empty_map, ".tmp_vmlinux0", ctx.executable.kallsyms_tool)
 
     btf_object = None
     if config.config_flags.get("CONFIG_DEBUG_INFO_BTF") == "y":
