@@ -201,8 +201,17 @@ def _module_command_flags_test_impl(ctx):
             "CONFIG_BASIC_MODVERSIONS": "y",
             "CONFIG_MODULES": "y",
             "CONFIG_MODVERSIONS": "y",
-        })),
+        }), "6.18.39"),
     )
+    for version in ["5.15.206", "6.5.0", "6.6.0"]:
+        asserts.equals(
+            env,
+            (["-M"] if version == "6.6.0" else []) + ["-m", "-E"],
+            linux_module_actions.modpost_args(struct(config_flags = {
+                "CONFIG_MODULES": "y",
+                "CONFIG_MODVERSIONS": "y",
+            }), version),
+        )
     return unittest.end(env)
 
 _module_command_flags_test = unittest.make(_module_command_flags_test_impl)

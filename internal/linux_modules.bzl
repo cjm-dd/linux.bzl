@@ -36,12 +36,13 @@ def _link_module(ctx, target, preliminary, mod_object, module_common, module_lds
     args.add(out)
     args.add(preliminary)
     args.add(mod_object)
-    args.add(module_common)
+    if module_common != None:
+        args.add(module_common)
     path_mapped_run(
         ctx.actions,
         executable = target.linker,
         inputs = depset(
-            [preliminary, mod_object, module_common, module_lds],
+            [preliminary, mod_object, module_lds] + ([module_common] if module_common != None else []),
             transitive = [target.cc_toolchain.all_files],
         ),
         outputs = [out],
@@ -384,7 +385,7 @@ def _external_modpost(ctx, sdk, preliminary, crate_name, modinfo_check, source_v
     add_directory_arg(args, directory_anchor(modules_order))
     args.add("--")
     args.add(sdk.modpost)
-    args.add_all(linux_module_actions.modpost_args(sdk.config))
+    args.add_all(linux_module_actions.modpost_args(sdk.config, sdk.version))
     args.add("-e")
     args.add("-i")
     args.add("Kernel.symvers")
@@ -690,13 +691,15 @@ def _linux_module_sdk_impl(ctx):
     if modules and not modules_enabled:
         fail("%s has configured module objects but CONFIG_MODULES is disabled" % ctx.label)
     if modules_enabled:
-        for field in [
-            "module_common",
+        required_fields = [
             "module_lds",
             "module_symvers",
             "modules_order",
             "modpost",
-        ]:
+        ]
+        if linux_module_actions.version_at_least(ctx.attr.version, 6, 12):
+            required_fields.append("module_common")
+        for field in required_fields:
             if getattr(vmlinux, field) == None:
                 fail("%s is missing prepared module field %s" % (ctx.label, field))
 

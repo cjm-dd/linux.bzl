@@ -7824,7 +7824,7 @@ def _linux_resolve_btfids(ctx, config, input):
 
 def _linux_vmlinux_link(ctx, linker, cc_toolchain, feature_configuration, image_object, image_object_inputs, export_object, version_object, linker_script, kallsyms_object, btf_object, out, strip_debug):
     inputs = depset(
-        [image_object, export_object, linker_script] + ([version_object] if version_object != None else []),
+        [image_object, linker_script] + [obj for obj in [export_object, version_object] if obj != None],
         transitive = [image_object_inputs, cc_toolchain.all_files],
     )
     executable = linker
@@ -7850,7 +7850,8 @@ def _linux_vmlinux_link(ctx, linker, cc_toolchain, feature_configuration, image_
     args.add(out)
     args.add(whole_archive)
     args.add(image_object)
-    args.add(export_object)
+    if export_object != None:
+        args.add(export_object)
     if version_object != None:
         args.add(version_object)
     args.add(no_whole_archive)
@@ -8197,7 +8198,7 @@ def _linux_vmlinux_impl(ctx):
         generated_headers,
         source_root,
         module_prep.export_source if module_prep != None else None,
-    )
+    ) if _linux_version_at_least(ctx.attr.version, 5, 19) else None
 
     kallsyms_object = None
     if ctx.attr.kallsyms == "auto":

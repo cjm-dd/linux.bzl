@@ -731,9 +731,9 @@ def _stage_module_source_version_inputs(ctx, kernel, stage, module_metadata):
                 inputs.append(staged_source)
     return inputs
 
-def _modpost_args(config):
+def _modpost_args(config, version):
     args = []
-    if config.config_flags.get("CONFIG_MODULES") == "y":
+    if config.config_flags.get("CONFIG_MODULES") == "y" and _version_at_least(version, 6, 6):
         args.append("-M")
     if config.config_flags.get("CONFIG_MODVERSIONS") == "y":
         args.append("-m")
@@ -918,8 +918,8 @@ def _run_modpost(ctx, kernel, modpost, module_outputs):
         module_metadata,
     )
     module_symvers = ctx.actions.declare_file(stage + "/Module.symvers")
-    vmlinux_export = ctx.actions.declare_file(stage + "/.vmlinux.export.c")
-    outputs = [module_symvers, vmlinux_export] + [
+    vmlinux_export = ctx.actions.declare_file(stage + "/.vmlinux.export.c") if _version_at_least(kernel.version, 5, 19) else None
+    outputs = [module_symvers] + ([vmlinux_export] if vmlinux_export != None else []) + [
         module_sources[path]
         for path in module_paths
     ]
@@ -929,7 +929,7 @@ def _run_modpost(ctx, kernel, modpost, module_outputs):
     add_directory_arg(args, directory_anchor(modules_order))
     args.add("--")
     args.add(modpost)
-    args.add_all(_modpost_args(kernel.config))
+    args.add_all(_modpost_args(kernel.config, kernel.version))
     args.add("-o")
     args.add("Module.symvers")
     args.add("-T")
@@ -965,7 +965,7 @@ def _prepare(ctx, helpers, kernel):
     source_files = _source_files(kernel)
     modpost = _build_modpost(ctx, helpers, kernel, target, source_files)
     module_lds = _module_linker_script(ctx, helpers, kernel, target, source_files) if modules_enabled else None
-    module_common = _module_common(ctx, helpers, kernel, target, source_files) if modules_enabled else None
+    module_common = _module_common(ctx, helpers, kernel, target, source_files) if modules_enabled and _version_at_least(kernel.version, 6, 12) else None
     module_outputs = _process_module_roots(ctx, kernel, modules)
     outputs = _run_modpost(ctx, kernel, modpost, module_outputs)
     return struct(
