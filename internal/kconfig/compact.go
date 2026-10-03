@@ -2217,7 +2217,7 @@ func compactSpecialSourcesForObject(object string, config *ResolvedConfig) compa
 			path: "arch/x86/include/asm/vdso.h",
 		})
 		return compactSpecialSourceInputs{
-			primary:      "arch/x86/entry/vdso/vdso-note.S",
+			primary:      "arch/x86/entry/vdso/vclock_gettime.c",
 			includeRoots: []string{"arch/x86/entry/vdso"},
 			inputs:       inputs,
 		}
@@ -2234,7 +2234,7 @@ func compactSpecialSourcesForObject(object string, config *ResolvedConfig) compa
 		}
 		inputs = append(inputs, compactSpecialSourceInput{path: "arch/x86/include/asm/vdso.h"})
 		return compactSpecialSourceInputs{
-			primary:      "arch/x86/entry/vdso/vdso32/note.S",
+			primary:      "arch/x86/entry/vdso/vdso32/vclock_gettime.c",
 			includeRoots: []string{"arch/x86/entry/vdso"},
 			inputs:       inputs,
 		}

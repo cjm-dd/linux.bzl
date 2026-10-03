@@ -3783,7 +3783,7 @@ func TestCompactContentGraphARMVDSOBindsExactGeneratedBinaryAndProducerInputs(t 
 
 func TestCompactContentGraphSpecialSourceManifestExcludesHostTools(t *testing.T) {
 	inputs := compactSpecialSourcesForObject("arch/x86/entry/vdso/vdso-image-64.o", nil)
-	if inputs.primary != "arch/x86/entry/vdso/vdso-note.S" {
+	if inputs.primary != "arch/x86/entry/vdso/vclock_gettime.c" {
 		t.Fatalf("vDSO primary source = %q", inputs.primary)
 	}
 	var paths []string
@@ -3843,7 +3843,7 @@ func TestX86CompatVDSOSourceClosure(t *testing.T) {
 	header := "arch/x86/entry/vdso/vdso32/compat.h"
 	mustWriteSource(t, sourceRoot, header, "int compat_v1;\n")
 	writeCompactContentGraphForcedInputs(t, sourceRoot)
-	kb, err := ParseKbuild(strings.NewReader("obj-y := "+object+"\n"), "Kbuild")
+	kb, err := ParseKbuild(strings.NewReader("obj-y := "+object+"\nccflags-y := -DC_ONLY\nasflags-y := -D__ASSEMBLY__\n"), "Kbuild")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3856,6 +3856,9 @@ func TestX86CompatVDSOSourceClosure(t *testing.T) {
 		return variantByTarget(metadata, objectTarget(metadata, configByName(metadata, "base"), object))
 	}
 	before := generate()
+	if !slices.Contains(before.Flags, "-DC_ONLY") || slices.Contains(before.Flags, "-D__ASSEMBLY__") {
+		t.Fatalf("generated vDSO C wrapper has wrong language flags: %v", before.Flags)
+	}
 	mustWriteSource(t, sourceRoot, header, "int compat_v2;\n")
 	if after := generate(); after.ContentID == before.ContentID {
 		t.Fatal("32-bit-only vDSO header did not affect content ID")
