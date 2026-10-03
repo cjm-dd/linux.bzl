@@ -4110,6 +4110,11 @@ func TestCompactMappedGeneratedSourcesUseOutputLanguageFlags(t *testing.T) {
 			source:    "arch/x86/kernel/cpu/mkcapflags.sh",
 			wantFlags: []string{"-DANY", "-DC_ONLY"},
 		},
+		{
+			object:    "kernel/debug/kdb/gen-kdb_cmds.o",
+			source:    "kernel/debug/kdb/kdb_cmds",
+			wantFlags: []string{"-DANY", "-DC_ONLY"},
+		},
 	} {
 		t.Run(filepath.Ext(tc.source), func(t *testing.T) {
 			object := resolvedKbuildObject{
