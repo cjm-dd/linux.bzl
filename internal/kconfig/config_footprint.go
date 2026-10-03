@@ -99,18 +99,19 @@ const (
 type sourceScanProfile string
 
 const (
-	sourceScanKernel          sourceScanProfile = ""
-	sourceScanKernelModule    sourceScanProfile = "kernel-module"
-	sourceScanKernelGenksyms  sourceScanProfile = "kernel-genksyms"
-	sourceScanModuleGenksyms  sourceScanProfile = "kernel-module-genksyms"
-	sourceScanARMVDSO         sourceScanProfile = "arm-vdso"
-	sourceScanArm64VDSO       sourceScanProfile = "arm64-vdso"
-	sourceScanArm32CompatVDSO sourceScanProfile = "arm32-compat-vdso"
-	sourceScanRISCVVDSO       sourceScanProfile = "riscv-vdso"
-	sourceScanRISCVCompatVDSO sourceScanProfile = "riscv-compat-vdso"
-	sourceScanPPC64VDSO       sourceScanProfile = "ppc64-vdso"
-	sourceScanPPC32VDSO       sourceScanProfile = "ppc32-vdso"
-	sourceScanX86CompatVDSO   sourceScanProfile = "x86-compat-vdso"
+	sourceScanKernel             sourceScanProfile = ""
+	sourceScanKernelModule       sourceScanProfile = "kernel-module"
+	sourceScanKernelGenksyms     sourceScanProfile = "kernel-genksyms"
+	sourceScanModuleGenksyms     sourceScanProfile = "kernel-module-genksyms"
+	sourceScanARMVDSO            sourceScanProfile = "arm-vdso"
+	sourceScanArm64VDSO          sourceScanProfile = "arm64-vdso"
+	sourceScanArm32CompatVDSO    sourceScanProfile = "arm32-compat-vdso"
+	sourceScanRISCVVDSO          sourceScanProfile = "riscv-vdso"
+	sourceScanRISCVCompatVDSO    sourceScanProfile = "riscv-compat-vdso"
+	sourceScanPPC64VDSO          sourceScanProfile = "ppc64-vdso"
+	sourceScanPPC32VDSO          sourceScanProfile = "ppc32-vdso"
+	sourceScanX86CompatVDSO      sourceScanProfile = "x86-compat-vdso"
+	sourceScanX86CompatVDSOClock sourceScanProfile = "x86-compat-vdso-clock"
 )
 
 var sourceConfigPredefinedSymbols = []struct {
@@ -1566,6 +1567,16 @@ func sourceProfilePredefinedSymbols(profile sourceScanProfile) map[string]bool {
 			"__LP64__":                 false,
 			"DISABLE_BRANCH_PROFILING": true,
 		}
+	case sourceScanX86CompatVDSOClock:
+		// vdso32/vclock_gettime.c locally impersonates a 32-bit kernel.
+		predefined := sourceProfilePredefinedSymbols(sourceScanX86CompatVDSO)
+		for _, name := range []string{"CONFIG_64BIT", "CONFIG_X86_64", "CONFIG_COMPAT", "CONFIG_SPARSEMEM_VMEMMAP", "CONFIG_PARAVIRT_XXL"} {
+			predefined[name] = false
+		}
+		predefined["CONFIG_X86_32"] = true
+		predefined["BUILD_VDSO32"] = true
+		predefined["BUILD_VDSO32_64"] = true
+		return predefined
 	case sourceScanArm64VDSO:
 		return map[string]bool{
 			"BUILD_VDSO":               true,

@@ -3839,7 +3839,7 @@ func TestX86CompatVDSOSourceClosure(t *testing.T) {
 		mustWriteSource(t, sourceRoot, input.path, "\n")
 	}
 	entry := "arch/x86/entry/vdso/vdso32/vclock_gettime.c"
-	mustWriteSource(t, sourceRoot, entry, "#ifdef __i386__\n#include \"compat.h\"\n#endif\n")
+	mustWriteSource(t, sourceRoot, entry, "#if defined(__i386__) && defined(CONFIG_X86_32)\n#include \"compat.h\"\n#endif\n")
 	header := "arch/x86/entry/vdso/vdso32/compat.h"
 	mustWriteSource(t, sourceRoot, header, "int compat_v1;\n")
 	writeCompactContentGraphForcedInputs(t, sourceRoot)

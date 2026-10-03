@@ -1641,9 +1641,10 @@ func (memo compactVariantMemo) variantForStack(
 		if object.mode == "m" {
 			profile = sourceScanKernelModule
 		}
+		primaryProfile := profile
 		for _, input := range specialSources.inputs {
 			if input.path == source && input.profile != sourceScanKernel {
-				profile = input.profile
+				primaryProfile = input.profile
 			}
 		}
 		closure, err := scanner.closureForSourceConfigInputsSearchProfile(
@@ -1652,7 +1653,7 @@ func (memo compactVariantMemo) variantForStack(
 			config,
 			isAssemblySourcePath(source),
 			actionFootprint.providedIncludes,
-			profile,
+			primaryProfile,
 		)
 		if err != nil {
 			return CompactObjectVariant{}, fmt.Errorf("scan source inputs for %s: %w", name, err)
@@ -2231,6 +2232,9 @@ func compactSpecialSourcesForObject(object string, config *ResolvedConfig) compa
 		)
 		for i := range inputs {
 			inputs[i].profile = sourceScanX86CompatVDSO
+			if strings.HasSuffix(inputs[i].path, "/vclock_gettime.c") {
+				inputs[i].profile = sourceScanX86CompatVDSOClock
+			}
 		}
 		inputs = append(inputs, compactSpecialSourceInput{path: "arch/x86/include/asm/vdso.h"})
 		return compactSpecialSourceInputs{
