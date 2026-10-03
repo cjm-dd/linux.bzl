@@ -13,8 +13,6 @@ import (
 	"strings"
 )
 
-const exportSymbolPrefix = " __export_symbol_"
-
 type config struct {
 	mode         string
 	nm           string
@@ -86,13 +84,15 @@ func exportedSymbols(output []byte) []string {
 	scanner := bufio.NewScanner(strings.NewReader(string(output)))
 	for scanner.Scan() {
 		line := scanner.Text()
-		index := strings.LastIndex(line, exportSymbolPrefix)
-		if index < 0 {
-			continue
-		}
-		name := strings.TrimSpace(line[index+len(exportSymbolPrefix):])
-		if name != "" {
-			symbols = append(symbols, name)
+		for _, prefix := range []string{" __export_symbol_", " __ksymtab_"} {
+			index := strings.LastIndex(line, prefix)
+			if index < 0 {
+				continue
+			}
+			if name := strings.TrimSpace(line[index+len(prefix):]); name != "" {
+				symbols = append(symbols, name)
+			}
+			break
 		}
 	}
 	return symbols

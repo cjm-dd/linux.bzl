@@ -199,10 +199,23 @@ func TestExportedSymbolsMatchesUpstreamNmPattern(t *testing.T) {
 		"00000000 D __export_symbol_first",
 		"00000001 T ordinary_symbol",
 		"00000002 D __export_symbol_second",
+		"00000003 r __ksymtab_legacy",
 		"__export_symbol_missing_leading_space",
 	}, "\n"))
 	got := exportedSymbols(output)
-	if want := []string{"first", "second"}; strings.Join(got, ",") != strings.Join(want, ",") {
+	if want := []string{"first", "second", "legacy"}; strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("symbols = %q, want %q", got, want)
+	}
+}
+
+func TestRunLegacyAssemblyExports(t *testing.T) {
+	cfg := testConfig(t, "asm")
+	cfg.linuxVersion = "5.15.206"
+	executor := &fakeExecutor{nmOutput: "00000000 r __ksymtab_memcpy\n"}
+	if err := run(cfg, executor); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(executor.compilerInput, "EXPORT_SYMBOL(memcpy);") {
+		t.Fatalf("legacy export not passed to genksyms: %q", executor.compilerInput)
 	}
 }
