@@ -329,6 +329,15 @@ func TestLinuxLLVMProbeShellHandlesGroupedARMStackGuardProbeByProfile(t *testing
 	}
 }
 
+func TestLinuxLLVMProbeShellSupportsLegacyUBSanTrap(t *testing.T) {
+	const command = `{ mkdir .tmp_$$; trap "rm -rf .tmp_$$" EXIT; clang -Werror -fintegrated-as -fsanitize-undefined-trap-on-error -c -x c /dev/null -o .tmp_$$/tmp.o; } >/dev/null 2>&1 && echo "y" || echo "n"`
+	shell := testLinuxProbeShell(t, "x86_64")
+	got, err := shell(context.Background(), command)
+	if err != nil || got != "y" {
+		t.Fatalf("shell(%q) = %q, %v; want y", command, got, err)
+	}
+}
+
 func TestLinuxLLVMProbeShellRejectsExactARMV7KMSANCandidates(t *testing.T) {
 	shell := testLinuxProbeShell(t, "armv7")
 	for _, candidate := range []string{

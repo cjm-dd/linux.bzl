@@ -737,6 +737,7 @@ func isClangPrintPluginCommand(command string) bool {
 }
 
 var linuxLLVMKconfigCCOptionsCommon = map[string]bool{
+	normalizeLinuxProbeCandidate([]string{"-fsanitize-undefined-trap-on-error"}):                                                                       true,
 	normalizeLinuxProbeCandidate([]string{"-Wimplicit-fallthrough=5"}):                                                                                 false,
 	normalizeLinuxProbeCandidate([]string{"-Wunreachable-code-fallthrough"}):                                                                           true,
 	normalizeLinuxProbeCandidate([]string{"-ffunction-sections", "-fdata-sections"}):                                                                   true,
