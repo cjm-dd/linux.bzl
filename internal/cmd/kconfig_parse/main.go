@@ -1086,6 +1086,12 @@ func compactMetadata(
 				// CONFIG values are already resolved; avoid Makefile's generated config includes.
 				kbuildOpts.Variables["MAKECMDGOALS"] = "help"
 				kbuildOpts.Variables["LLVM"] = "1"
+				// No extra warning level was requested unless the caller supplied one.
+				for _, name := range []string{"W", "KBUILD_EXTRA_WARN", "KBUILD_ENABLE_EXTRA_GCC_CHECKS"} {
+					if _, supplied := kbuildOpts.Variables[name]; !supplied {
+						kbuildOpts.Variables[name] = ""
+					}
+				}
 			} else {
 				kbuildOpts.RootMakefiles = linuxRootMakefiles(rootDir, vars)
 			}
