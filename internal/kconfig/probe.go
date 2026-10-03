@@ -787,17 +787,21 @@ var linuxLLVMKconfigCCOptionsCommon = map[string]bool{
 }
 
 var linuxLLVMKconfigCCOptionsX86 = map[string]bool{
-	normalizeLinuxProbeCandidate([]string{"-fcf-protection=branch", "-mindirect-branch-register"}):         false,
-	normalizeLinuxProbeCandidate([]string{"-fpatchable-function-entry=16"}):                                true,
-	normalizeLinuxProbeCandidate([]string{"-fsanitize=kcfi", "-fsanitize-kcfi-arity"}):                     true,
-	normalizeLinuxProbeCandidate([]string{"-fsanitize=kernel-memory"}):                                     true,
-	normalizeLinuxProbeCandidate([]string{"-fsanitize=kernel-memory", "-fsanitize-memory-param-retval"}):   true,
-	normalizeLinuxProbeCandidate([]string{"-fsanitize=kernel-memory", "-mllvm", "-msan-disable-checks=1"}): true,
-	normalizeLinuxProbeCandidate([]string{"-m32"}):                                                         true,
-	normalizeLinuxProbeCandidate([]string{"-m64"}):                                                         true,
-	normalizeLinuxProbeCandidate([]string{"-march=native"}):                                                false,
-	normalizeLinuxProbeCandidate([]string{"-mfunction-return=thunk-extern"}):                               true,
-	normalizeLinuxProbeCandidate([]string{"-mharden-sls=all"}):                                             true,
+	normalizeLinuxProbeCandidate([]string{"-fsanitize=bounds"}):                                                                         true,
+	normalizeLinuxProbeCandidate([]string{"-fsanitize=local-bounds"}):                                                                   true,
+	normalizeLinuxProbeCandidate([]string{"-Werror=unused-command-line-argument", "-fsanitize=bounds", "-fsanitize-coverage=trace-pc"}): true,
+	normalizeLinuxProbeCandidate([]string{"-Werror=unused-command-line-argument", "-fsanitize=thread", "-fsanitize-coverage=trace-pc"}): true,
+	normalizeLinuxProbeCandidate([]string{"-fcf-protection=branch", "-mindirect-branch-register"}):                                      false,
+	normalizeLinuxProbeCandidate([]string{"-fpatchable-function-entry=16"}):                                                             true,
+	normalizeLinuxProbeCandidate([]string{"-fsanitize=kcfi", "-fsanitize-kcfi-arity"}):                                                  true,
+	normalizeLinuxProbeCandidate([]string{"-fsanitize=kernel-memory"}):                                                                  true,
+	normalizeLinuxProbeCandidate([]string{"-fsanitize=kernel-memory", "-fsanitize-memory-param-retval"}):                                true,
+	normalizeLinuxProbeCandidate([]string{"-fsanitize=kernel-memory", "-mllvm", "-msan-disable-checks=1"}):                              true,
+	normalizeLinuxProbeCandidate([]string{"-m32"}):                                                                                      true,
+	normalizeLinuxProbeCandidate([]string{"-m64"}):                                                                                      true,
+	normalizeLinuxProbeCandidate([]string{"-march=native"}):                                                                             false,
+	normalizeLinuxProbeCandidate([]string{"-mfunction-return=thunk-extern"}):                                                            true,
+	normalizeLinuxProbeCandidate([]string{"-mharden-sls=all"}):                                                                          true,
 }
 
 var linuxLLVMKconfigCCOptionsARM64 = map[string]bool{

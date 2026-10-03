@@ -338,6 +338,22 @@ func TestLinuxLLVMProbeShellSupportsLegacyUBSanTrap(t *testing.T) {
 	}
 }
 
+func TestLinuxLLVMProbeShellSupportsLegacyX86SanitizerCandidates(t *testing.T) {
+	shell := testLinuxProbeShell(t, "x86_64")
+	for _, candidate := range []string{
+		"-fsanitize=bounds",
+		"-fsanitize=local-bounds",
+		"-Werror=unused-command-line-argument -fsanitize=bounds -fsanitize-coverage=trace-pc",
+		"-Werror=unused-command-line-argument -fsanitize=thread -fsanitize-coverage=trace-pc",
+	} {
+		command := `{ clang -Werror -fintegrated-as ` + candidate + ` -c -x c /dev/null -o .tmp.o; } >/dev/null 2>&1 && echo "y" || echo "n"`
+		got, err := shell(context.Background(), command)
+		if err != nil || got != "y" {
+			t.Errorf("shell(%q) = %q, %v; want y", command, got, err)
+		}
+	}
+}
+
 func TestLinuxLLVMProbeShellRejectsExactARMV7KMSANCandidates(t *testing.T) {
 	shell := testLinuxProbeShell(t, "armv7")
 	for _, candidate := range []string{
