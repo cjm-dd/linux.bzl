@@ -2248,6 +2248,37 @@ func TestCompactSELinuxGeneratedHeaders(t *testing.T) {
 	}
 }
 
+func TestCompactTOMOYOPolicyInputs(t *testing.T) {
+	tree := mustParseCompactFixture(t)
+	kb, err := ParseKbuild(strings.NewReader("obj-y += security/tomoyo/common.o\n"), "Kbuild")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceRoot := t.TempDir()
+	mustWriteSource(t, sourceRoot, "security/tomoyo/common.c", "#include \"builtin-policy.h\"\n")
+	writeCompactContentGraphForcedInputs(t, sourceRoot)
+	generate := func() CompactObjectVariant {
+		t.Helper()
+		metadata, err := compactMetadataBatchWithOptionsForTest(t, tree, kb, []NamedConfig{{Name: "base"}}, CompactMetadataOptions{
+			SourceRoot:            sourceRoot,
+			CompileEnvironmentABI: "object-abi-v1",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return variantByTarget(metadata, objectTarget(metadata, configByName(metadata, "base"), "security/tomoyo/common.o"))
+	}
+	empty := generate()
+	path := "security/tomoyo/policy/exception_policy.conf.default"
+	mustWriteSource(t, sourceRoot, path, "initialize_domain /sbin/modprobe from any\n")
+	defaultPolicy := generate()
+	mustWriteSource(t, sourceRoot, path, "initialize_domain /sbin/hotplug from any\n")
+	changed := generate()
+	if empty.ContentID == defaultPolicy.ContentID || defaultPolicy.ContentID == changed.ContentID {
+		t.Fatal("adding or changing a default policy did not invalidate its consumer")
+	}
+}
+
 func TestCompactContentGraphValidationRecomputesContentIDs(t *testing.T) {
 	generate := func(t *testing.T) *CompactMetadata {
 		t.Helper()
@@ -2512,6 +2543,7 @@ func TestCompactContentGraphGeneratedObjectActionFootprints(t *testing.T) {
 		{"security/apparmor/capability.o", "include/uapi/linux/capability.h", "", "capability_names.h", "", nil},
 		{"security/apparmor/net.o", "include/linux/socket.h", "", "net_names.h", "", nil},
 		{"security/apparmor/resource.o", "include/uapi/asm-generic/resource.h", "", "rlim_names.h", "", nil},
+		{"security/tomoyo/common.o", "", "", "builtin-policy.h", "", nil},
 		{"drivers/tty/vt/consolemap_deftbl.o", "", "include/linux/types.h", "", "", nil},
 		{"lib/crc/crc32-main.o", "", "", "crc32table.h", "", nil},
 		{"lib/crc32.o", "", "", "crc32table.h", "CONFIG_CRC32_SLICEBY4", nil},

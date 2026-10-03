@@ -1646,6 +1646,14 @@ func (memo compactVariantMemo) variantForStack(
 			)
 		}
 		actionFootprint := compactObjectActionFootprintForObject(name, flags)
+		if name == "security/tomoyo/common.o" {
+			for _, policy := range []string{"profile", "exception_policy", "domain_policy", "manager", "stat"} {
+				path := "security/tomoyo/policy/" + policy + ".conf.default"
+				if _, exists := scanner.absForTreePath(path); exists {
+					actionFootprint.sourceInputs = append(actionFootprint.sourceInputs, path)
+				}
+			}
+		}
 		if name == "fs/unicode/utf8-norm.o" && opts.KernelVersion != "" {
 			separateData, err := kernelVersionAtLeast(opts.KernelVersion, 5, 17)
 			if err != nil {
@@ -2097,6 +2105,8 @@ func compactObjectActionFootprintForObject(object string, flags []string) compac
 	case "security/apparmor/resource.o":
 		footprint.sourceInputs = []string{"include/uapi/asm-generic/resource.h"}
 		footprint.providedIncludes = []string{"rlim_names.h"}
+	case "security/tomoyo/common.o":
+		footprint.providedIncludes = []string{"builtin-policy.h"}
 	case "drivers/tty/vt/consolemap_deftbl.o":
 		footprint.closureInputs = []string{"include/linux/types.h"}
 	case "drivers/of/empty_root.dtb.o":
@@ -3068,6 +3078,7 @@ var compactGroupedSpecialObjects = map[string]bool{
 	"security/apparmor/capability.o":               true,
 	"security/apparmor/net.o":                      true,
 	"security/apparmor/resource.o":                 true,
+	"security/tomoyo/common.o":                     true,
 	"lib/crc/crc32-main.o":                         true,
 	"lib/crc/crc64-main.o":                         true,
 	"lib/crc32.o":                                  true,
