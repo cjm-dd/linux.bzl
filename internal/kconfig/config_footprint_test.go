@@ -748,6 +748,25 @@ func TestConfigSourceScannerDefaultsLegacyMODVERSIONSToUndefined(t *testing.T) {
 	}
 }
 
+func TestConfigSourceScannerTracksLegacyRandstructPlugin(t *testing.T) {
+	root := t.TempDir()
+	mustWriteSource(t, root, "module.c", "#ifdef RANDSTRUCT_PLUGIN\n#include <generated/randomize_layout_hash.h>\n#endif\n")
+	scanner := newConfigSourceScanner(CompactMetadataOptions{SourceRoot: root})
+	for _, enabled := range []bool{false, true} {
+		config := &ResolvedConfig{
+			Effective: map[string]string{"CONFIG_GCC_PLUGIN_RANDSTRUCT": "y"},
+			Written:   map[string]bool{"CONFIG_GCC_PLUGIN_RANDSTRUCT": enabled},
+		}
+		closure, err := scanner.closureForSourceConfig("module.c", nil, config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := slices.Contains(closure.generatedIncludes, "generated/randomize_layout_hash.h"); got != enabled {
+			t.Errorf("randstruct header present = %v, want %v", got, enabled)
+		}
+	}
+}
+
 func TestConfigSourceScannerExcludesAMDFirmwareHeaders(t *testing.T) {
 	root := t.TempDir()
 	const source = "drivers/gpu/drm/amd/test.c"

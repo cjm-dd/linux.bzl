@@ -119,6 +119,7 @@ var sourceConfigPredefinedSymbols = []struct {
 }{
 	{predefined: "GCC_PLUGINS", config: "CONFIG_GCC_PLUGINS"},
 	{predefined: "RANDSTRUCT", config: "CONFIG_RANDSTRUCT"},
+	{predefined: "RANDSTRUCT_PLUGIN", config: "CONFIG_GCC_PLUGIN_RANDSTRUCT"},
 }
 
 type sourceIncludeSearch struct {
