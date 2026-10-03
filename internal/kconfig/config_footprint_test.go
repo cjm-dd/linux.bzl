@@ -1762,6 +1762,33 @@ func TestGeneratedHeaderOffsetsBindForcedHeadersAndProducerABI(t *testing.T) {
 	}
 }
 
+func TestLegacyCompileHeaderTracksUTSConfiguration(t *testing.T) {
+	for _, version := range []string{"5.15.206", "6.0.19", "6.1.0", "6.12.96"} {
+		t.Run(version, func(t *testing.T) {
+			opts := CompactMetadataOptions{Srcarch: "x86", KernelVersion: version, SourceRoot: t.TempDir()}
+			config := &ResolvedConfig{Effective: map[string]string{"CONFIG_SMP": "y", "CONFIG_PREEMPT_RT": "y"}}
+			families, err := generatedHeaderFamilyFootprints(config, opts, newConfigSourceScanner(opts))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, family := range families {
+				if family.name != compactGeneratedHeaderFamilyCompile {
+					continue
+				}
+				want := ""
+				if version == "5.15.206" || version == "6.0.19" {
+					want = "y"
+				}
+				for _, key := range []string{"CONFIG_SMP", "CONFIG_PREEMPT_RT"} {
+					if got := family.fragment[key]; got != want {
+						t.Errorf("compile header %s = %q, want %q", key, got, want)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestGeneratedHeaderVersionFamiliesUseDeclaredInputsOnly(t *testing.T) {
 	root := t.TempDir()
 	mustWriteSource(t, root, "Makefile", "VERSION = 1\n")

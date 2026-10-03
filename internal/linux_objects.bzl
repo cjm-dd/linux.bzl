@@ -3206,6 +3206,10 @@ def _linux_x86_version_header_family(ctx, config, name, path, output_flag, mnemo
     if name == "compile":
         args.add("-machine", "x86_64")
         args.add("-compiler", _linux_compiler_version_string())
+        if not _linux_version_at_least(config.kernel_version, 6, 1):
+            args.add("-kernel_version", config.kernel_version)
+            args.add("-config", config.config)
+            inputs.append(config.config)
     elif name == "version":
         args.add("-kernel_version", config.kernel_version)
     elif name == "utsrelease":
@@ -6189,7 +6193,7 @@ def _linux_object_impl(ctx):
     source_relpath = _linux_source_tree_relpath_from_ctx(ctx, source_file)
     if source_relpath.startswith("lib/fdt") and source_relpath.endswith(".c"):
         generated_sources.append(_source_tree_file(ctx, "scripts/dtc/libfdt/" + source_relpath.rsplit("/", 1)[-1]))
-    if ctx.attr.object == "init/version.o":
+    if ctx.attr.object == "init/version.o" and utsversion_tmp != None:
         generated_sources.append(_source_tree_file(ctx, "init/version-timestamp.c"))
     if ctx.attr.object == "arch/x86/kernel/cpu/capflags.o":
         generated = ctx.actions.declare_file(ctx.label.name + ".obj/arch/x86/kernel/cpu/capflags.c")
@@ -7820,7 +7824,7 @@ def _linux_resolve_btfids(ctx, config, input):
 
 def _linux_vmlinux_link(ctx, linker, cc_toolchain, feature_configuration, image_object, image_object_inputs, export_object, version_object, linker_script, kallsyms_object, btf_object, out, strip_debug):
     inputs = depset(
-        [image_object, export_object, version_object, linker_script],
+        [image_object, export_object, linker_script] + ([version_object] if version_object != None else []),
         transitive = [image_object_inputs, cc_toolchain.all_files],
     )
     executable = linker
@@ -7847,7 +7851,8 @@ def _linux_vmlinux_link(ctx, linker, cc_toolchain, feature_configuration, image_
     args.add(whole_archive)
     args.add(image_object)
     args.add(export_object)
-    args.add(version_object)
+    if version_object != None:
+        args.add(version_object)
     args.add(no_whole_archive)
     if spec.direct_lld:
         args.add("--start-group")
@@ -8155,7 +8160,7 @@ def _linux_vmlinux_impl(ctx):
         "init/version-timestamp.o",
         "init/version-timestamp.o",
         extra_flags = ["-fno-function-sections", "-fno-data-sections", "-include", "generated/utsversion.h"],
-    )
+    ) if _linux_version_at_least(ctx.attr.version, 6, 1) else None
     image_object_inputs = depset([info.output for info in image.objects])
     image_object = _linux_vmlinux_objtool(
         ctx,

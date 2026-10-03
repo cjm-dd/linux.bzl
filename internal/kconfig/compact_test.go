@@ -2328,7 +2328,7 @@ func TestCompactContentGraphGeneratedObjectActionFootprints(t *testing.T) {
 		{"certs/system_certificates.o", "", "", "certs/signing_key.x509", "", nil},
 		{"arch/x86/kernel/cpu/capflags.o", "", "arch/x86/include/asm/cpufeatures.h", "", "", nil},
 		{"arch/x86/realmode/rmpiggy.o", "", "", "pasyms.h", "", nil},
-		{"init/version.o", "init/version-timestamp.c", "", "", "", nil},
+		{"init/version.o", "init/version-timestamp.c", "", "", "", []string{"-include", "init/utsversion-tmp.h"}},
 		{"lib/fdt_ro.o", "scripts/dtc/libfdt/fdt_ro.c", "", "", "", nil},
 		{"crypto/example.asn1.o", "scripts/asn1_compiler.c", "", "", "", nil},
 		{"init/uts.o", "", "", "", "CONFIG_LOCALVERSION", []string{"-include", "$(obj)/utsversion-tmp.h"}},
@@ -2976,6 +2976,13 @@ func TestCompactContentGraphPowerPCArchRootIncludeIsRecursive(t *testing.T) {
 	_, changed := generate("changed")
 	if changed.ContentID == before.ContentID {
 		t.Fatalf("PowerPC arch-relative header did not change prom content ID %q", before.ContentID)
+	}
+}
+
+func TestLegacyVersionObjectDoesNotRequireTimestampSource(t *testing.T) {
+	got := compactObjectActionFootprintForObject("init/version.o", nil)
+	if len(got.sourceInputs) != 0 {
+		t.Fatalf("legacy version source inputs = %v, want none", got.sourceInputs)
 	}
 }
 

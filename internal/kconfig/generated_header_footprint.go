@@ -25,6 +25,7 @@ var generatedHeaderConfigSymbols = []string{
 	"CONFIG_GCC_PLUGINS",
 	"CONFIG_HZ",
 	"CONFIG_LOCALVERSION",
+	"CONFIG_PREEMPT",
 	"CONFIG_PREEMPT_BUILD",
 	"CONFIG_PREEMPT_DYNAMIC",
 	"CONFIG_PREEMPT_RT",
@@ -105,15 +106,31 @@ func generatedHeaderFamilyFootprints(
 	if err != nil {
 		return nil, err
 	}
+	var compileSymbols []string
+	var compileFacts map[string]string
+	if opts.KernelVersion != "" {
+		modern, err := kernelVersionAtLeast(opts.KernelVersion, 6, 1)
+		if err != nil {
+			return nil, err
+		}
+		if !modern {
+			compileSymbols = []string{"CONFIG_SMP", "CONFIG_PREEMPT", "CONFIG_PREEMPT_BUILD", "CONFIG_PREEMPT_DYNAMIC", "CONFIG_PREEMPT_RT"}
+			compileFacts = map[string]string{
+				"LEGACY_UTS_VERSION":     "true",
+				"KBUILD_BUILD_TIMESTAMP": "1970-01-01T00:00:00Z",
+				"KBUILD_BUILD_VERSION":   "1",
+			}
+		}
+	}
 	compile, err := generatedHeaderFamilyFootprint(
 		config,
 		scanner,
 		compactGeneratedHeaderFamilyCompile,
+		compileSymbols,
 		nil,
 		nil,
 		nil,
-		nil,
-		nil,
+		compileFacts,
 	)
 	if err != nil {
 		return nil, err
@@ -149,6 +166,7 @@ func generatedHeaderFamilyFootprints(
 		scanner,
 		compactGeneratedHeaderFamilyUTSVersion,
 		[]string{
+			"CONFIG_PREEMPT",
 			"CONFIG_PREEMPT_BUILD",
 			"CONFIG_PREEMPT_DYNAMIC",
 			"CONFIG_PREEMPT_RT",

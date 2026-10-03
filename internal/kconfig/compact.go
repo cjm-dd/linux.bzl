@@ -2119,7 +2119,9 @@ func compactObjectActionFootprintForObject(object string, flags []string) compac
 			"arch/powerpc/kernel/vdso/vdso32.so.dbg",
 		}
 	case "init/version.o":
-		footprint.sourceInputs = []string{"init/version-timestamp.c"}
+		if flagsNeedUTSVersionTmp(flags) {
+			footprint.sourceInputs = []string{"init/version-timestamp.c"}
+		}
 	}
 	if strings.HasPrefix(object, "lib/fdt") && strings.HasSuffix(object, ".o") {
 		source := strings.TrimSuffix(filepath.Base(object), ".o") + ".c"
@@ -2699,23 +2701,31 @@ func compactGenksymsProfile(module bool) sourceScanProfile {
 }
 
 func compactGenksymsAssemblyHeaders(version string) ([]string, error) {
-	parts := strings.Split(version, ".")
-	if len(parts) < 2 {
-		return nil, fmt.Errorf("kernel version %q does not contain a major and minor version", version)
-	}
-	major, err := strconv.Atoi(parts[0])
+	modern, err := kernelVersionAtLeast(version, 6, 18)
 	if err != nil {
-		return nil, fmt.Errorf("kernel version %q has an invalid major version", version)
-	}
-	minor, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return nil, fmt.Errorf("kernel version %q has an invalid minor version", version)
+		return nil, err
 	}
 	headers := []string{"linux/kernel.h"}
-	if major > 6 || (major == 6 && minor >= 18) {
+	if modern {
 		headers = append(headers, "linux/string.h")
 	}
 	return append(headers, "asm/asm-prototypes.h"), nil
+}
+
+func kernelVersionAtLeast(version string, minimumMajor, minimumMinor int) (bool, error) {
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return false, fmt.Errorf("kernel version %q does not contain a major and minor version", version)
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false, fmt.Errorf("kernel version %q has an invalid major version", version)
+	}
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false, fmt.Errorf("kernel version %q has an invalid minor version", version)
+	}
+	return major > minimumMajor || (major == minimumMajor && minor >= minimumMinor), nil
 }
 
 func kbuildFlagLanguageMatchesSource(language string, source string) bool {

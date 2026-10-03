@@ -63,6 +63,37 @@ func TestLinuxVersionHeaderUsesDeclaredKernelVersion(t *testing.T) {
 	}
 }
 
+func TestLegacyCompileHeaderContainsUTSVersion(t *testing.T) {
+	root := t.TempDir()
+	config := filepath.Join(root, "config")
+	if err := os.WriteFile(config, []byte("CONFIG_SMP=y\nCONFIG_PREEMPT=y\nCONFIG_PREEMPT_RT=y\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, version := range []string{"5.15.206", "6.0.19", "6.1.0", "6.18.39"} {
+		t.Run(version, func(t *testing.T) {
+			out := filepath.Join(root, version+".h")
+			if err := run([]string{"-compile_out", out, "-kernel_version", version, "-config", config}); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			legacy := version == "5.15.206" || version == "6.0.19"
+			if got := strings.Contains(string(data), "#define UTS_VERSION"); got != legacy {
+				t.Fatalf("UTS_VERSION present = %v, want %v: %s", got, legacy, data)
+			}
+			if legacy {
+				assertFileContains(t, out, `#define UTS_VERSION "#1 SMP PREEMPT_RT 1970-01-01T00:00:00Z"`)
+			}
+		})
+	}
+	err := run([]string{"-compile_out", filepath.Join(root, "missing.h"), "-kernel_version", "5.15.206"})
+	if err == nil || !strings.Contains(err.Error(), "-config is required") {
+		t.Fatalf("legacy compile header without config: %v", err)
+	}
+}
+
 func TestRunReadsOnlyInputsRequiredByRequestedOutput(t *testing.T) {
 	root := t.TempDir()
 	missing := filepath.Join(root, "missing")

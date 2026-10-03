@@ -49,8 +49,16 @@ func run(args []string) error {
 	if *utsreleaseOut != "" && *kernelReleasePath == "" {
 		return fmt.Errorf("-kernel_release is required with -utsrelease_out")
 	}
-	if *utsversionOut != "" && *configPath == "" {
-		return fmt.Errorf("-config is required with -utsversion_out")
+	legacyCompile := false
+	if *compileOut != "" && *kernelVersion != "" {
+		major, minor, _, err := parseKernelVersion(*kernelVersion)
+		if err != nil {
+			return err
+		}
+		legacyCompile = major < 6 || (major == 6 && minor < 1)
+	}
+	if (*utsversionOut != "" || legacyCompile) && *configPath == "" {
+		return fmt.Errorf("-config is required for UTS_VERSION generation")
 	}
 
 	var linuxVersionContent string
@@ -75,7 +83,7 @@ func run(args []string) error {
 	}
 
 	var config map[string]string
-	if *utsversionOut != "" {
+	if *utsversionOut != "" || legacyCompile {
 		configFile, err := os.Open(*configPath)
 		if err != nil {
 			return fmt.Errorf("open config: %w", err)
@@ -91,7 +99,11 @@ func run(args []string) error {
 	}
 
 	if *compileOut != "" {
-		if err := writeFile(*compileOut, compileHeader(*machine, *compileBy, *compileHost, *compiler)); err != nil {
+		content := compileHeader(*machine, *compileBy, *compileHost, *compiler)
+		if legacyCompile {
+			content += utsversionHeader(config, *buildVersion, *buildTimestamp)
+		}
+		if err := writeFile(*compileOut, content); err != nil {
 			return fmt.Errorf("write compile header: %w", err)
 		}
 	}
@@ -204,9 +216,9 @@ func utsversionHeader(config map[string]string, buildVersion, buildTimestamp str
 	if enabled(config, "CONFIG_SMP") {
 		parts = append(parts, "SMP")
 	}
-	for _, key := range []string{"CONFIG_PREEMPT_BUILD", "CONFIG_PREEMPT_DYNAMIC", "CONFIG_PREEMPT_RT"} {
+	for _, key := range []string{"CONFIG_PREEMPT_RT", "CONFIG_PREEMPT_DYNAMIC", "CONFIG_PREEMPT", "CONFIG_PREEMPT_BUILD"} {
 		if enabled(config, key) {
-			parts = append(parts, strings.TrimPrefix(key, "CONFIG_"))
+			parts = append(parts, strings.TrimSuffix(strings.TrimPrefix(key, "CONFIG_"), "_BUILD"))
 			break
 		}
 	}
