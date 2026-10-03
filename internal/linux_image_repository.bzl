@@ -374,7 +374,6 @@ def _linux_image_impl(rctx):
     )
     _validate_resolved_arch(arch, base, "resolved base config")
     validate_config_features(base, "resolved base config")
-    _validate_image_compression(base, arch, "resolved base config")
     base = _without_rust_toolchain_config(base)
 
     configs = {
@@ -410,7 +409,6 @@ def _linux_image_impl(rctx):
         )
         _validate_resolved_arch(arch, resolved, "resolved overlay %s" % name)
         validate_config_features(resolved, "resolved overlay %s" % name)
-        _validate_image_compression(resolved, arch, "resolved overlay %s" % name)
         resolved = _without_rust_toolchain_config(resolved)
         sanitized = _sanitize_target_name(name)
         if sanitized in sanitized_names:
@@ -754,26 +752,6 @@ def _validate_resolved_arch(profile, config, description):
             (description, symbol, profile),
         )
     _validate_fragment_arch(profile, config, description)
-
-def _validate_image_compression(config, arch, description):
-    if arch != "x86_64":
-        return
-    selected = [
-        symbol
-        for symbol in [
-            "CONFIG_KERNEL_GZIP",
-            "CONFIG_KERNEL_LZ4",
-        ]
-        if config.get(symbol, "n") == "y"
-    ]
-    if len(selected) != 1:
-        fail(
-            (
-                "%s must select exactly one supported x86 kernel compression mode: " +
-                "CONFIG_KERNEL_GZIP=y or CONFIG_KERNEL_LZ4=y; got %s"
-            ) %
-            (description, selected),
-        )
 
 def _validate_variant_name(name):
     if not name or name == "base":

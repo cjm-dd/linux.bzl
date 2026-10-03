@@ -292,6 +292,7 @@ linux_cc_module(
 The module consumes the default configured kernel directly; it does not need a
 module-specific image or config overlay. `:module_sdk` builds the configured
 kernel and module metadata without analyzing the compressed boot image;
+unsupported boot compression modes fail only when an image is requested.
 `:kernel` remains accepted. The same rule and source shape are
 supported for x86_64, aarch64, and armv7 kernels. As with
 Rust modules, the `kernel` provider fixes the target platform and rejects
