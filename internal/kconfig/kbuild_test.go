@@ -9,6 +9,33 @@ import (
 	"testing"
 )
 
+func TestParseKbuildDirectoryTreeRelativeSourceIncludes(t *testing.T) {
+	dir := t.TempDir()
+	for path, contents := range map[string]string{
+		"Kbuild":                  "obj-y += drivers/test/\n",
+		"drivers/test/Makefile":   "include $(srctree)/$(src)/../shared/Makefile\n",
+		"drivers/shared/Makefile": "obj-y += test.o\n",
+	} {
+		path = filepath.Join(dir, path)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	kb, err := ParseKbuildDirectoryTree(filepath.Join(dir, "Kbuild"), KbuildOptions{
+		RootDir:             dir,
+		RelativeSourcePaths: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kb.Objects) != 1 || kb.Objects[0].Object != "drivers/test/test.o" {
+		t.Fatalf("objects = %#v", kb.Objects)
+	}
+}
+
 func TestParseKbuildCommonObjectPatterns(t *testing.T) {
 	kb, err := ParseKbuild(strings.NewReader(`obj-y += init/main.o generated.c ignored/
 obj-m += module.o

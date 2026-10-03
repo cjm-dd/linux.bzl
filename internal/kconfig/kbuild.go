@@ -153,6 +153,8 @@ type KbuildOptions struct {
 	SourceRoots     map[string]string
 	Variables       map[string]string
 	MaxIncludeDepth int
+	// RelativeSourcePaths matches older Kbuild, where src is relative to srctree.
+	RelativeSourcePaths bool
 	// ConfigVariablesComplete declares Variables to be the complete resolved
 	// CONFIG_* Make environment. Missing CONFIG_* names then expand empty and
 	// evaluate as unset instead of being retained as symbolic conditions.
@@ -2585,6 +2587,9 @@ func (p *kbuildDirectoryTreeParser) parseRootMakefile(path string) (*KbuildFile,
 func (p *kbuildDirectoryTreeParser) variableOverrides(objectDir string) map[string]string {
 	vars := make(map[string]string, 4)
 	vars["src"] = filepath.ToSlash(filepath.Join(p.rootDir, objectDir))
+	if p.opts.RelativeSourcePaths {
+		vars["src"] = objectDir
+	}
 	vars["obj"] = objectDir
 	if _, ok := p.inheritedVariables["objtree"]; !ok {
 		vars["objtree"] = p.rootDir
