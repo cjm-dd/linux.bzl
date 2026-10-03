@@ -14,14 +14,17 @@ load(
 
 visibility("//...")
 
-_MODPOST_SOURCES = [
-    "scripts/mod/file2alias.c",
-    "scripts/mod/modpost.c",
-    "scripts/mod/sumversion.c",
-    "scripts/mod/symsearch.c",
-]
-
 _PAHOLE_BTF_FEATURES = "encode_force,var,float,enum64,decl_tag,type_tag,optimized_func,consistent_func,decl_tag_kfuncs"
+
+def _modpost_sources(version):
+    sources = [
+        "scripts/mod/file2alias.c",
+        "scripts/mod/modpost.c",
+        "scripts/mod/sumversion.c",
+    ]
+    if _version_at_least(version, 6, 7):
+        sources.append("scripts/mod/symsearch.c")
+    return sources
 
 def _kernel_elf_class(arch):
     if arch == "armv7":
@@ -276,7 +279,18 @@ def _devicetable_offsets(ctx, helpers, kernel, target, source_files):
 def _build_modpost(ctx, helpers, kernel, target, source_files):
     devicetable_offsets = _devicetable_offsets(ctx, helpers, kernel, target, source_files)
     elfconfig = ctx.actions.declare_file(ctx.label.name + ".module_prep/scripts/mod/elfconfig.h")
-    ctx.actions.write(elfconfig, "#define KERNEL_ELFCLASS %s\n" % _kernel_elf_class(kernel.arch))
+    # All supported target architectures are little-endian. Older modpost also
+    # needs the host byte order to decode cross-compiled ELF files.
+    ctx.actions.write(elfconfig, """#define KERNEL_ELFCLASS %s
+#define KERNEL_ELFDATA ELFDATA2LSB
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define HOST_ELFDATA ELFDATA2LSB
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define HOST_ELFDATA ELFDATA2MSB
+#else
+#error Unsupported host byte order
+#endif
+""" % _kernel_elf_class(kernel.arch))
 
     host_cc = host_cc_toolchain(ctx)
     host_features = cc_common.configure_features(
@@ -290,7 +304,7 @@ def _build_modpost(ctx, helpers, kernel, target, source_files):
         action_name = C_COMPILE_ACTION_NAME,
     )
     host_toolchain_files = host_cc.all_files.to_list()
-    sources = [_source_file(source_files, path) for path in _MODPOST_SOURCES]
+    sources = [_source_file(source_files, path) for path in _modpost_sources(kernel.version)]
     source_root = _execroot_dir(kernel.source_root)
     compile_flags = [
         "-std=gnu11",
@@ -970,6 +984,7 @@ linux_module_actions = struct(
     kernel_elf_class = _kernel_elf_class,
     module_metadata_sanitizer_flags = _module_metadata_sanitizer_flags,
     modpost_args = _modpost_args,
+    modpost_sources = _modpost_sources,
     module_map = _module_map,
     module_root_needs_objtool = _module_root_needs_objtool,
     objtool_args = _objtool_args,

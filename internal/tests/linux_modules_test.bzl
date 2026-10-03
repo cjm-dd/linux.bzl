@@ -179,6 +179,15 @@ def _module_command_flags_test_impl(ctx):
     asserts.equals(env, "ELFCLASS32", linux_module_actions.kernel_elf_class("armv7"))
     for arch in ["aarch64", "x86_64"]:
         asserts.equals(env, "ELFCLASS64", linux_module_actions.kernel_elf_class(arch))
+    for version in ["5.15.206", "6.6.1", "6.7.0", "6.18.39"]:
+        expected_sources = [
+            "scripts/mod/file2alias.c",
+            "scripts/mod/modpost.c",
+            "scripts/mod/sumversion.c",
+        ]
+        if version in ["6.7.0", "6.18.39"]:
+            expected_sources.append("scripts/mod/symsearch.c")
+        asserts.equals(env, expected_sources, linux_module_actions.modpost_sources(version))
     asserts.equals(env, ".root.o.cmd", linux_module_actions.symversion_cmd_path("root.o"))
     asserts.equals(
         env,
