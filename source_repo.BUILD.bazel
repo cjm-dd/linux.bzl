@@ -208,7 +208,10 @@ cc_library(
 
 cc_library(
     name = "scripts_headers_cc",
-    hdrs = glob(["scripts/include/**/*.h"], allow_empty = True),
+    hdrs = glob([
+        "scripts/*.h",
+        "scripts/include/**/*.h",
+    ], allow_empty = True),
     includes = ["scripts/include"],
 )
 
