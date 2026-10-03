@@ -1502,6 +1502,9 @@ func sourcePredefinedSymbols(srcarch string) map[string]bool {
 		"ACPI_USE_SYSTEM_CLIBRARY":  true,
 		"ACPI_USE_STANDARD_HEADERS": false,
 		"DEBUG_ZLIB":                false,
+		// AMD's firmware/test-harness build is not a kernel action.
+		"_TEST_HARNESS": false,
+		"FPGA_USB4":     false,
 		// Legacy kernels gate <linux/modversions.h> with this non-CONFIG
 		// preprocessor symbol. Normal kernel compile actions do not define it;
 		// the scanner's action context still lets an explicit -D/-U override it.

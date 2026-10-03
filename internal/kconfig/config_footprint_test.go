@@ -748,6 +748,25 @@ func TestConfigSourceScannerDefaultsLegacyMODVERSIONSToUndefined(t *testing.T) {
 	}
 }
 
+func TestConfigSourceScannerExcludesAMDFirmwareHeaders(t *testing.T) {
+	root := t.TempDir()
+	const source = "drivers/gpu/drm/amd/test.c"
+	mustWriteSource(t, root, source, "#if defined(_TEST_HARNESS) || defined(FPGA_USB4)\n#include \"dmub_fw_types.h\"\n#endif\n")
+	scanner := newConfigSourceScanner(CompactMetadataOptions{SourceRoot: root})
+	if _, err := scanner.closureForSource(source, nil); err != nil {
+		t.Fatalf("kernel scan followed firmware-only include: %v", err)
+	}
+	for _, symbol := range []string{"_TEST_HARNESS", "FPGA_USB4"} {
+		search, err := scanner.actionIncludeSearch(source, []string{"-D" + symbol})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := scanner.closureForSourceConfigInputsSearchProfile(source, search, nil, false, nil, sourceScanKernel); err == nil {
+			t.Errorf("explicit %s failed to enable firmware include", symbol)
+		}
+	}
+}
+
 func TestConfigSourceScannerModelsArmNeonAsCompilerProvided(t *testing.T) {
 	root := t.TempDir()
 	mustWriteSource(t, root, "arch/arm64/crypto/neon.c", "#include <arm_neon.h>\n")
