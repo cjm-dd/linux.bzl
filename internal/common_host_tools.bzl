@@ -97,7 +97,7 @@ def linux_common_host_tools(
         name = asn1_compiler,
         srcs = [source_label(source_repo, "scripts/asn1_compiler.c")],
         visibility = visibility,
-        deps = [source_label(source_repo, "linux_headers_cc")],
+        deps = [source_label(source_repo, "asn1_compiler_headers_cc")],
     )
 
     cc_binary(
